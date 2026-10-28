@@ -3,12 +3,14 @@ package controlador;
 import dao.DAO;
 import exception.OurException;
 import exception.ShowAlert;
+import java.util.List;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import modelo.Administrador;
+import modelo.Contrato;
 import modelo.Empleado;
 import modelo.Usuario;
 
@@ -26,8 +28,9 @@ public class IniciarSesionController {
     }
 
     /** Acceso a la base de datos. */
-    private final DAO dao = Sesion.getDao();
+    private DAO dao = Sesion.getDao();
 
+    // Controles de la pantalla. @FXML une cada variable con el control del FXML que tiene el mismo fx:id
     @FXML private TextField txtUsuario;
     @FXML private PasswordField txtContrasena;
     /** Etiqueta roja donde se escriben los errores del formulario. */
@@ -66,11 +69,35 @@ public class IniciarSesionController {
                 Ventana.cambiar(txtUsuario, "/vista/Empleado.fxml");
             } else {
                 ShowAlert.info("Inicio de sesión", "¡Bienvenido/a " + usuario.getNombre() + "!\nRol: Cliente");
+                mostrarAvisos(usuario.getId());
                 Ventana.cambiar(txtUsuario, "/vista/Cliente.fxml");
             }
         } catch (OurException e) {
             ShowAlert.error(e.getMessage());
         }
+    }
+
+    /**
+     * Avisa al cliente de los contratos que se han rescindido (baja aprobada o fecha de fin pasada)
+     * desde la última vez que entró. Caso de uso "Rescindir un contrato" (notificación).
+     *
+     * @param idCliente id del cliente que acaba de iniciar sesión
+     * @throws OurException si falla la base de datos
+     */
+    private void mostrarAvisos(String idCliente) throws OurException {
+        List<Contrato> avisos = dao.obtenerAvisosCliente(idCliente);
+
+        // Si no hay contratos rescindidos, no se enseña nada
+        if (avisos.isEmpty()) {
+            return;
+        }
+
+        // Se escribe una línea por cada contrato rescindido
+        String texto = "Se han rescindido estos contratos:\n";
+        for (Contrato c : avisos) {
+            texto = texto + "\n- " + c.getNombreTarifa() + " (teléfono " + c.getTelefono() + ")";
+        }
+        ShowAlert.info("Aviso de contratos", texto);
     }
 
     /**

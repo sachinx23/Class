@@ -73,10 +73,12 @@ public class DAOImplementacion implements DAO {
     @Override
     public Usuario login(String nombreUsuario, String contrasena) throws OurException {
         try {
+            // El filtro es lo que se busca: un documento con ese usuario Y esa contraseña
             Document filtro = new Document();
             filtro.put("nombreUsuario", nombreUsuario);
             filtro.put("contrasena", contrasena);
 
+            // 1. Se busca en Administradores. first() devuelve el primero que encuentra, o null si no hay ninguno
             Document d = coleccion(COL_ADMINISTRADORES).find(filtro).first();
             if (d != null) {
                 LogApp.info("Login de administrador: " + nombreUsuario);
@@ -84,18 +86,21 @@ public class DAOImplementacion implements DAO {
                         texto(d, "contrasena"), texto(d, "correo"), texto(d, "cuentaBancaria"));
             }
 
+            // 2. Si no es administrador, se busca en Empleados
             d = coleccion(COL_EMPLEADOS).find(filtro).first();
             if (d != null) {
                 LogApp.info("Login de empleado: " + nombreUsuario);
                 return documentoAEmpleado(d);
             }
 
+            // 3. Si tampoco es empleado, se busca en Clientes
             d = coleccion(COL_CLIENTES).find(filtro).first();
             if (d != null) {
                 LogApp.info("Login de cliente: " + nombreUsuario);
                 return documentoACliente(d);
             }
 
+            // 4. No está en ninguna colección: usuario o contraseña incorrectos
             LogApp.info("Login fallido: " + nombreUsuario);
             return null;
         } catch (MongoException e) {
@@ -116,6 +121,7 @@ public class DAOImplementacion implements DAO {
         String[] colecciones = {COL_ADMINISTRADORES, COL_EMPLEADOS, COL_CLIENTES};
         for (String nombreColeccion : colecciones) {
             Document d = coleccion(nombreColeccion).find(new Document("nombreUsuario", nombreUsuario)).first();
+            // Está ocupado si lo encuentra y no es la misma persona que se está modificando
             if (d != null && !idTexto(d, "_id").equals(idPropio)) {
                 return true;
             }
@@ -133,12 +139,19 @@ public class DAOImplementacion implements DAO {
      */
     private boolean dniOcupado(String dni, String idPropio) throws OurException {
         Document d = coleccion(COL_CLIENTES).find(new Document("DNI", dni)).first();
-        return d != null && !idTexto(d, "_id").equals(idPropio);
+        if (d == null) {
+            return false;                              // nadie tiene ese DNI
+        }
+        if (idTexto(d, "_id").equals(idPropio)) {
+            return false;                              // lo tiene el mismo cliente que se está modificando
+        }
+        return true;                                   // lo tiene otro cliente
     }
 
     @Override
     public void insertarCliente(Cliente cliente) throws OurException {
         try {
+            // 1. Se comprueba que el DNI y el nombre de usuario no estén repetidos
             if (dniOcupado(cliente.getDni(), null)) {
                 LogApp.info("Registro rechazado, DNI repetido: " + cliente.getDni());
                 throw new OurException(ErrorMessages.DNI_EXISTS);
@@ -148,6 +161,7 @@ public class DAOImplementacion implements DAO {
                 throw new OurException(ErrorMessages.USER_EXISTS);
             }
 
+            // 2. Se pasan los datos del objeto Cliente a un Document (campo -> valor)
             Document d = new Document();
             d.put("nombreUsuario", cliente.getNombreUsuario());
             d.put("nombre", cliente.getNombre());
@@ -158,7 +172,9 @@ public class DAOImplementacion implements DAO {
             d.put("direccion", cliente.getDireccion());
             d.put("cuentaBancaria", cliente.getCuentaBancaria());
             d.put("dadoDeBaja", false);
-            d.put("ticketSoporte", new ArrayList<ObjectId>());
+            d.put("ticketSoporte", new ArrayList<ObjectId>());   // array de _id de tickets, al principio vacío
+
+            // 3. Se guarda en la colección Clientes
             coleccion(COL_CLIENTES).insertOne(d);
 
             // Al insertar, MongoDB le pone un _id nuevo al documento
@@ -173,12 +189,15 @@ public class DAOImplementacion implements DAO {
     @Override
     public void actualizarCliente(Cliente cliente) throws OurException {
         try {
+            // 1. El nombre de usuario y el DNI nuevos no pueden ser de otra persona
             if (nombreUsuarioOcupado(cliente.getNombreUsuario(), cliente.getId())) {
                 throw new OurException(ErrorMessages.USER_EXISTS);
             }
             if (dniOcupado(cliente.getDni(), cliente.getId())) {
                 throw new OurException(ErrorMessages.DNI_EXISTS);
             }
+
+            // 2. Se guardan los campos que han podido cambiar
             Document cambios = new Document();
             cambios.put("nombre", cliente.getNombre());
             cambios.put("nombreUsuario", cliente.getNombreUsuario());
@@ -201,15 +220,15 @@ public class DAOImplementacion implements DAO {
     @Override
     public void eliminarDatosSensibles(String idCliente) throws OurException {
         try {
-            // "$unset" quita los campos del documento (el valor "" da igual, solo importa el nombre)
-            Document camposABorrar = new Document();
-            camposABorrar.put("DNI", "");
-            camposABorrar.put("telefono", "");
-            camposABorrar.put("direccion", "");
-            camposABorrar.put("cuentaBancaria", "");
-            Document filtro = new Document("_id", new ObjectId(idCliente));
-            long encontrados = coleccion(COL_CLIENTES).updateOne(filtro, new Document("$unset", camposABorrar)).getMatchedCount();
-            if (encontrados == 0) {
+            // Los datos personales se dejan vacíos ("")
+            Document cambios = new Document();
+            cambios.put("DNI", "");
+            cambios.put("telefono", "");
+            cambios.put("direccion", "");
+            cambios.put("cuentaBancaria", "");
+
+            // modificar() devuelve false si no existe ningún cliente con ese id
+            if (!modificar(COL_CLIENTES, idCliente, cambios)) {
                 throw new OurException(ErrorMessages.DATOS_SENSIBLES);
             }
             LogApp.info("Datos sensibles eliminados del cliente " + idCliente);
@@ -240,12 +259,15 @@ public class DAOImplementacion implements DAO {
     public List<Tarifa> obtenerTarifas() throws OurException {
         List<Tarifa> tarifas = new ArrayList<>();
         try {
-            // Solo las tarifas activas. "$ne" significa "distinto de": así también salen
-            // las tarifas que no tienen el campo "activa"
-            Document filtro = new Document("activa", new Document("$ne", false));
-            for (Document d : coleccion(COL_TARIFAS).find(filtro)) {
-                tarifas.add(new Tarifa(idTexto(d, "_id"), texto(d, "nombreTarifa"), numero(d, "precio"),
-                        texto(d, "detalles"), texto(d, "tipotarifa"), true));
+            // Se recorren todas las tarifas y solo se guardan las activas.
+            // getBoolean("activa", true): si la tarifa no tiene el campo "activa", se considera activa
+            for (Document d : coleccion(COL_TARIFAS).find()) {
+                boolean activa = d.getBoolean("activa", true);
+                if (activa) {
+                    Tarifa t = new Tarifa(idTexto(d, "_id"), texto(d, "nombreTarifa"), numero(d, "precio"),
+                            texto(d, "detalles"), texto(d, "tipotarifa"), true);
+                    tarifas.add(t);
+                }
             }
             LogApp.info("Consultadas " + tarifas.size() + " tarifas");
             return tarifas;
@@ -422,25 +444,28 @@ public class DAOImplementacion implements DAO {
     @Override
     public void aprobarBaja(String idCliente, String idEmpleado) throws OurException {
         try {
-            // 1. Cancelar todos los contratos del cliente que están en "baja pendiente"
-            Document filtro = new Document();
-            filtro.put("idCliente", new ObjectId(idCliente));
-            filtro.put("estado", ESTADO_BAJA_PENDIENTE);
-            Document cambios = new Document();
-            cambios.put("estado", ESTADO_CANCELADO);
-            cambios.put("idEmpleado", new ObjectId(idEmpleado));
-            long cancelados = coleccion(COL_CONTRATOS).updateMany(filtro, new Document("$set", cambios)).getModifiedCount();
-            LogApp.info("Baja aprobada por el empleado " + idEmpleado + ": " + cancelados + " contratos cancelados del cliente " + idCliente);
+            // 1. Los contratos del cliente que están en "baja pendiente" pasan a "cancelado"
+            List<Contrato> contratos = buscarContratos(new Document("idCliente", new ObjectId(idCliente)));
+            for (Contrato c : contratos) {
+                if (c.getEstado().equals(ESTADO_BAJA_PENDIENTE)) {
+                    cambiarEstadoContrato(c.getId(), ESTADO_CANCELADO, idEmpleado, ErrorMessages.BAJA_CONTRATO);
+                    c.setEstado(ESTADO_CANCELADO);
+                }
+            }
+            LogApp.info("Baja aprobada por el empleado " + idEmpleado + " para el cliente " + idCliente);
 
-            // 2. Los contratos que ya han caducado tampoco cuentan
-            cancelarCaducados(new ObjectId(idCliente));
+            // 2. Los contratos que ya han caducado también se cancelan
+            cancelarCaducados(idCliente);
 
-            // 3. Si ya no le queda ningún contrato sin cancelar, el cliente queda dado de baja (se mantiene su perfil).
-            //    countDocuments cuenta en MongoDB sin traer los documentos a Java
-            Document filtroVivos = new Document();
-            filtroVivos.put("idCliente", new ObjectId(idCliente));
-            filtroVivos.put("estado", new Document("$ne", ESTADO_CANCELADO));
-            long contratosVivos = coleccion(COL_CONTRATOS).countDocuments(filtroVivos);
+            // 3. Se cuentan los contratos que siguen vivos (los que no están cancelados)
+            int contratosVivos = 0;
+            for (Contrato c : buscarContratos(new Document("idCliente", new ObjectId(idCliente)))) {
+                if (!c.getEstado().equals(ESTADO_CANCELADO)) {
+                    contratosVivos++;
+                }
+            }
+
+            // 4. Si no le queda ninguno, el cliente queda dado de baja (su perfil se mantiene)
             if (contratosVivos == 0) {
                 modificar(COL_CLIENTES, idCliente, new Document("dadoDeBaja", true));
                 LogApp.info("Cliente " + idCliente + " dado de baja");
@@ -457,36 +482,54 @@ public class DAOImplementacion implements DAO {
      * @param idCliente id del cliente
      * @throws OurException si no hay conexión con MongoDB
      */
-    private void cancelarCaducados(ObjectId idCliente) throws OurException {
-        // Las fechas son texto "aaaa-mm-dd", así que se pueden comparar como texto. "$lt" = menor que
-        Document caducados = new Document();
-        caducados.put("idCliente", idCliente);
-        caducados.put("estado", ESTADO_ACTIVO);
-        caducados.put("fechaFinalizacion", new Document("$lt", LocalDate.now().toString()));
-        long cancelados = coleccion(COL_CONTRATOS).updateMany(caducados,
-                new Document("$set", new Document("estado", ESTADO_CANCELADO))).getModifiedCount();
-        if (cancelados > 0) {
-            LogApp.info(cancelados + " contratos caducados cancelados del cliente " + idCliente);
+    private void cancelarCaducados(String idCliente) throws OurException {
+        LocalDate hoy = LocalDate.now();
+
+        // Se miran los contratos activos del cliente uno a uno
+        Document filtro = new Document();
+        filtro.put("idCliente", new ObjectId(idCliente));
+        filtro.put("estado", ESTADO_ACTIVO);
+        for (Contrato c : buscarContratos(filtro)) {
+            // La fecha está guardada como texto "aaaa-mm-dd". LocalDate.parse() la convierte en fecha
+            if (!c.getFechaFinalizacion().isEmpty()) {
+                LocalDate fechaFin = LocalDate.parse(c.getFechaFinalizacion());
+                if (fechaFin.isBefore(hoy)) {
+                    modificar(COL_CONTRATOS, c.getId(), new Document("estado", ESTADO_CANCELADO));
+                    LogApp.info("Contrato caducado cancelado: " + c.getId());
+                }
+            }
         }
     }
 
     @Override
     public List<Contrato> obtenerAvisosCliente(String idCliente) throws OurException {
         try {
-            ObjectId id = new ObjectId(idCliente);
-
             // 1. Los contratos activos cuya fecha de fin ya ha pasado se cancelan
-            cancelarCaducados(id);
+            cancelarCaducados(idCliente);
 
-            // 2. Contratos cancelados de los que todavía no se ha avisado ("$ne" = distinto de)
-            Document sinAvisar = new Document();
-            sinAvisar.put("idCliente", id);
-            sinAvisar.put("estado", ESTADO_CANCELADO);
-            sinAvisar.put("notificado", new Document("$ne", true));
-            List<Contrato> avisos = buscarContratos(sinAvisar);
+            // 2. Se buscan los contratos cancelados del cliente
+            Document filtro = new Document();
+            filtro.put("idCliente", new ObjectId(idCliente));
+            filtro.put("estado", ESTADO_CANCELADO);
 
-            // 3. Se marcan como avisados para no repetir el aviso la próxima vez
-            coleccion(COL_CONTRATOS).updateMany(sinAvisar, new Document("$set", new Document("notificado", true)));
+            List<Contrato> avisos = new ArrayList<>();
+            for (Document d : coleccion(COL_CONTRATOS).find(filtro)) {
+                // 3. Si todavía no se le ha avisado de este contrato ("notificado" no es true)...
+                boolean notificado = d.getBoolean("notificado", false);
+                if (!notificado) {
+                    // ...se añade a la lista de avisos...
+                    Contrato c = new Contrato(idTexto(d, "_id"), texto(d, "telefono"), texto(d, "estado"),
+                            idTexto(d, "idCliente"), idTexto(d, "idTarifa"), idTexto(d, "idEmpleado"),
+                            texto(d, "fechaComienzo"), texto(d, "fechaFinalizacion"));
+                    Document tarifa = (Document) d.get("tarifa");
+                    if (tarifa != null) {
+                        c.setNombreTarifa(texto(tarifa, "nombreTarifa"));
+                    }
+                    avisos.add(c);
+                    // ...y se marca como avisado, para no repetir el aviso la próxima vez
+                    modificar(COL_CONTRATOS, c.getId(), new Document("notificado", true));
+                }
+            }
             LogApp.info("Avisos del cliente " + idCliente + ": " + avisos.size() + " contratos rescindidos");
             return avisos;
         } catch (MongoException e) {
@@ -512,9 +555,13 @@ public class DAOImplementacion implements DAO {
     @Override
     public List<TicketSoporte> obtenerTicketsPendientes() throws OurException {
         try {
-            // "$in" = el estado es uno de los de la lista
-            List<String> estados = List.of(TICKET_PENDIENTE, TICKET_EN_PROCESO);
-            List<TicketSoporte> tickets = buscarTickets(new Document("estado", new Document("$in", estados)));
+            // Se recorren todos los tickets y solo se guardan los que están "pendiente" o "en proceso"
+            List<TicketSoporte> tickets = new ArrayList<>();
+            for (TicketSoporte t : buscarTickets(new Document())) {
+                if (t.getEstado().equals(TICKET_PENDIENTE) || t.getEstado().equals(TICKET_EN_PROCESO)) {
+                    tickets.add(t);
+                }
+            }
             LogApp.info("Consultados " + tickets.size() + " tickets pendientes");
             return tickets;
         } catch (MongoException e) {
@@ -777,11 +824,13 @@ public class DAOImplementacion implements DAO {
     @Override
     public void borrarSucursal(String idSucursal) throws OurException {
         try {
+            // 1. Si algún empleado trabaja en esta sucursal, no se puede borrar
             Document empleado = coleccion(COL_EMPLEADOS).find(new Document("idSucursal", new ObjectId(idSucursal))).first();
             if (empleado != null) {
                 LogApp.info("No se borra la sucursal " + idSucursal + " porque tiene empleados");
                 throw new OurException(ErrorMessages.SUCURSAL_CON_EMPLEADOS);
             }
+            // 2. Se borra la sucursal
             if (!borrar(COL_SUCURSALES, idSucursal)) {
                 throw new OurException(ErrorMessages.SAVE_SUCURSAL);
             }

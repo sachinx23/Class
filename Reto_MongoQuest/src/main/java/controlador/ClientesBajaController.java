@@ -24,8 +24,9 @@ public class ClientesBajaController {
     }
 
     /** Acceso a la base de datos. */
-    private final DAO dao = Sesion.getDao();
+    private DAO dao = Sesion.getDao();
 
+    // Controles de la pantalla. @FXML une cada variable con el control del FXML que tiene el mismo fx:id
     @FXML private TableView<Cliente> tablaClientes;
     @FXML private TableColumn<Cliente, String> colNombre;
     @FXML private TableColumn<Cliente, String> colNombreUsuario;

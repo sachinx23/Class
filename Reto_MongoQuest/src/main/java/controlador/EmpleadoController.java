@@ -34,7 +34,7 @@ public class EmpleadoController {
     }
 
     /** Acceso a la base de datos. */
-    private final DAO dao = Sesion.getDao();
+    private DAO dao = Sesion.getDao();
 
     // Textos del desplegable de opciones
     private static final String OP_TICKETS = "Tickets pendientes";
@@ -45,6 +45,7 @@ public class EmpleadoController {
     /** Empleado que ha iniciado sesión. */
     private Empleado empleado;
 
+    // Controles de la pantalla. @FXML une cada variable con el control del FXML que tiene el mismo fx:id
     @FXML private Label lblBienvenida;
     @FXML private ComboBox<String> cmbOpciones;
 

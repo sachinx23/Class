@@ -145,3 +145,61 @@ El administrador puede leerlo desde la aplicación: **Menú → Ver log**.
 | Administrador | Eliminar datos sensibles de clientes de baja  | Menú → Clientes dados de baja                     |
 | Administrador | Ver el log                                    | Menú → Ver log                                    |
 
+
+---
+
+## 6. Cómo leer el código (para quien empieza)
+
+Casi todos los botones de la aplicación siguen los mismos 4 pasos. Por ejemplo, "Enviar ticket" en `ClienteController`:
+
+```java
+@FXML
+public void btnEnviarTicket(ActionEvent event) {
+    // 1. Leer lo que ha escrito el usuario y comprobarlo
+    String asunto = txtSoporteAsunto.getText().trim();
+    if (asunto.isEmpty()) {
+        ShowAlert.info("Campos incompletos", "...");
+        return;                                   // si está mal, se para aquí
+    }
+    // 2. Pedir confirmación
+    if (!ShowAlert.confirmar("Confirmar envío", "¿Seguro...?")) {
+        return;
+    }
+    // 3. Llamar al DAO para guardar en MongoDB
+    try {
+        dao.insertarTicket(ticket);
+        // 4. Avisar de que ha ido bien
+        ShowAlert.info("Ticket enviado", "...");
+    } catch (OurException e) {
+        // Si MongoDB falla, el DAO lanza OurException con un mensaje para el usuario
+        ShowAlert.error(e.getMessage());
+    }
+}
+```
+
+Y casi todos los métodos del DAO siguen estos pasos:
+
+```java
+public void insertarTicket(TicketSoporte ticket) throws OurException {
+    try {
+        Document d = new Document();              // 1. Un Document es como un HashMap: campo -> valor
+        d.put("asunto", ticket.getAsunto());
+        coleccion(COL_TICKETS).insertOne(d);      // 2. Se guarda en la colección
+        LogApp.info("Ticket creado ...");         // 3. Se apunta en el log
+    } catch (MongoException e) {
+        LogApp.error("Error creando ...", e);     // Si falla: se apunta el error en el log...
+        throw new OurException(ErrorMessages.INSERT_TICKET);  // ...y se avisa a la pantalla
+    }
+}
+```
+
+Las operaciones de MongoDB que se usan:
+
+| Código | Qué hace |
+|---|---|
+| `coleccion(...).find(filtro)` | Busca los documentos que cumplen el filtro (se recorren con un `for`) |
+| `.first()` | Se queda con el primero que encuentra, o `null` si no hay ninguno |
+| `insertOne(d)` | Guarda un documento nuevo (MongoDB le pone un `_id`) |
+| `modificar(coleccion, id, cambios)` | Cambia solo los campos de `cambios` (usa `$set` por dentro) |
+| `borrar(coleccion, id)` | Borra el documento con ese `_id` |
+| `$push` | Añade un elemento al final de un array (se usa para `Clientes.ticketSoporte`) |

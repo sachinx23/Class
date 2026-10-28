@@ -4,8 +4,6 @@ import dao.DAO;
 import exception.OurException;
 import exception.ShowAlert;
 import java.time.LocalDate;
-import java.util.List;
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -40,7 +38,7 @@ public class ClienteController {
     }
 
     /** Acceso a la base de datos. */
-    private final DAO dao = Sesion.getDao();
+    private DAO dao = Sesion.getDao();
 
     // Textos del desplegable de opciones
     private static final String OP_TARIFAS = "Mis Tarifas";
@@ -53,6 +51,7 @@ public class ClienteController {
     /** Cliente que ha iniciado sesión. */
     private Cliente cliente;
 
+    // Controles de la pantalla. @FXML une cada variable con el control del FXML que tiene el mismo fx:id
     @FXML private Label lblBienvenida;
     @FXML private ComboBox<String> cmbOpciones;
 
@@ -144,28 +143,6 @@ public class ClienteController {
         mostrarPanel(panelPerfil);
         cargarPerfil();
 
-        // runLater: el aviso se enseña cuando la pantalla ya está abierta, no mientras se carga
-        Platform.runLater(this::mostrarAvisos);
-    }
-
-    /**
-     * Avisa al cliente de los contratos que se han rescindido (baja aprobada o fecha de fin pasada)
-     * desde la última vez que entró. Caso de uso "Rescindir un contrato" (notificación).
-     */
-    private void mostrarAvisos() {
-        try {
-            List<Contrato> avisos = dao.obtenerAvisosCliente(cliente.getId());
-            if (avisos.isEmpty()) {
-                return;
-            }
-            String texto = "Se han rescindido estos contratos:\n";
-            for (Contrato c : avisos) {
-                texto += "\n- " + c.getNombreTarifa() + " (teléfono " + c.getTelefono() + ")";
-            }
-            ShowAlert.info("Aviso de contratos", texto);
-        } catch (OurException e) {
-            ShowAlert.error(e.getMessage());
-        }
     }
 
     /**

@@ -22,6 +22,7 @@ public class AdministradorController {
     public AdministradorController() {
     }
 
+    // Controles de la pantalla. @FXML une cada variable con el control del FXML que tiene el mismo fx:id
     /** Panel donde se cargan las pantallas de cada opción del menú. */
     @FXML private AnchorPane panelContenido;
 
