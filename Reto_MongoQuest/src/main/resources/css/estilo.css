@@ -1,0 +1,34 @@
+/* Estilo común de todas las pantallas de Tel-ONDA */
+
+.root {
+    -fx-font-family: "Segoe UI", "System";
+    -fx-font-size: 13px;
+    -fx-background-color: #f4f7fb;
+}
+
+.button {
+    -fx-background-color: #1f6fb2;
+    -fx-text-fill: white;
+    -fx-background-radius: 5;
+    -fx-cursor: hand;
+}
+
+.button:hover {
+    -fx-background-color: #175a91;
+}
+
+.text-field, .password-field, .combo-box, .menu-button {
+    -fx-background-radius: 5;
+}
+
+.table-view {
+    -fx-background-color: white;
+}
+
+.table-view .column-header {
+    -fx-background-color: #dce8f5;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #1f6fb2;
+}

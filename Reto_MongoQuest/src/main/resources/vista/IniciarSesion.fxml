@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.Pane?>
+
+<AnchorPane id="AnchorPane" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controlador.IniciarSesionController">
+   <children>
+      <Pane prefHeight="406.0" prefWidth="600.0">
+         <children>
+            <Button fx:id="btnIniciarSesion" defaultButton="true" layoutX="149.0" layoutY="269.0" mnemonicParsing="false" onAction="#btnIniciarSesion" text="Iniciar Sesion" />
+            <Button fx:id="btnRegistrarse" layoutX="389.0" layoutY="269.0" mnemonicParsing="false" onAction="#btnRegistrarse" text="Registrarse" />
+            <Label alignment="CENTER" layoutX="0.0" layoutY="20.0" prefWidth="600.0" style="-fx-font-size: 30px; -fx-font-weight: bold; -fx-text-fill: #1f6fb2;" text="Tel-ONDA" />
+            <Label layoutX="286.0" layoutY="82.0" text="Usuario" />
+            <TextField fx:id="txtUsuario" layoutX="235.0" layoutY="111.0" />
+            <Label layoutX="276.0" layoutY="178.0" text="Contraseña" />
+            <Label fx:id="lblMensajeError" layoutX="157.0" textFill="RED" layoutY="239.0" prefHeight="17.0" prefWidth="286.0" />
+            <PasswordField fx:id="txtContrasena" layoutX="232.0" layoutY="203.0" />
+         </children>
+      </Pane>
+   </children>
+</AnchorPane>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.Pane?>
+
+<AnchorPane id="AnchorPane" prefHeight="717.0" prefWidth="798.0" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controlador.AdministradorController">
+    <children>
+        <Pane prefHeight="717.0" prefWidth="798.0">
+            <children>
+                <Label layoutX="200.0" layoutY="40.0" style="-fx-font-size: 24px; -fx-font-weight: bold;" text="Panel de administrador" />
+                <Button fx:id="btnMiPerfil" layoutX="61.0" layoutY="44.0" mnemonicParsing="false" onAction="#miPerfil" text="Mi Perfil" />
+                <MenuButton fx:id="menu" layoutX="670.0" layoutY="44.0" mnemonicParsing="false" text="Menú">
+                    <items>
+                        <MenuItem mnemonicParsing="false" onAction="#altaEmpleado" text="Alta empleado" />
+                        <MenuItem mnemonicParsing="false" onAction="#cambiarPuesto" text="Cambiar puesto" />
+                        <MenuItem mnemonicParsing="false" onAction="#borrarEmpleado" text="Borrar cuenta empleado" />
+                        <MenuItem mnemonicParsing="false" onAction="#gestionSucursal" text="Gestion Sucursal" />
+                        <MenuItem mnemonicParsing="false" onAction="#verLog" text="Ver log" />
+                        <MenuItem mnemonicParsing="false" onAction="#cerrarSesion" text="Cerrar sesión" />
+                    </items>
+                </MenuButton>
+                <AnchorPane fx:id="panelContenido" layoutY="100.0" prefHeight="617.0" prefWidth="798.0" />
+            </children>
+        </Pane>
+    </children>
+</AnchorPane>
