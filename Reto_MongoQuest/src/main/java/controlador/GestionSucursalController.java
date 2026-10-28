@@ -6,15 +6,18 @@ import exception.ShowAlert;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.MouseEvent;
+import modelo.Empleado;
 import modelo.Sucursal;
 
 /**
- * Gestión de sucursales (GestionSucursal.fxml): crear, modificar y eliminar tiendas.
+ * Gestión de sucursales (GestionSucursal.fxml): crear, modificar y eliminar tiendas,
+ * ver los empleados de cada una y trasladarlos a otra.
  * Casos de uso "Crear sucursal" y "Gestionar sucursal".
  */
 public class GestionSucursalController {
@@ -42,6 +45,13 @@ public class GestionSucursalController {
     @FXML private TextField txtCodigoPostal;
     @FXML private TextField txtHorario;
 
+    /** Empleados de la sucursal seleccionada. */
+    @FXML private TableView<Empleado> tablaPlantilla;
+    @FXML private TableColumn<Empleado, String> colEmpleadoNombre;
+    @FXML private TableColumn<Empleado, String> colEmpleadoCorreo;
+    /** Sucursal a la que se traslada el empleado. */
+    @FXML private ComboBox<Sucursal> cmbSucursalDestino;
+
     /**
      * Se ejecuta al abrir la pantalla: prepara las columnas y carga las sucursales.
      */
@@ -52,6 +62,8 @@ public class GestionSucursalController {
         colLocalidad.setCellValueFactory(new PropertyValueFactory<Sucursal, String>("localidad"));
         colTelefono.setCellValueFactory(new PropertyValueFactory<Sucursal, String>("telefono"));
         colHorario.setCellValueFactory(new PropertyValueFactory<Sucursal, String>("horario"));
+        colEmpleadoNombre.setCellValueFactory(new PropertyValueFactory<Empleado, String>("nombre"));
+        colEmpleadoCorreo.setCellValueFactory(new PropertyValueFactory<Empleado, String>("correo"));
         cargarSucursales();
     }
 
@@ -61,6 +73,8 @@ public class GestionSucursalController {
     private void cargarSucursales() {
         try {
             tablaSucursales.setItems(FXCollections.observableArrayList(dao.obtenerSucursales()));
+            cmbSucursalDestino.getItems().setAll(tablaSucursales.getItems());
+            tablaPlantilla.getItems().clear();
         } catch (OurException e) {
             ShowAlert.error(e.getMessage());
         }
@@ -85,6 +99,57 @@ public class GestionSucursalController {
                 txtCodigoPostal.setText(String.valueOf(s.getCodigoPostal()));
             }
             txtHorario.setText(s.getHorario());
+            cargarPlantilla(s);
+        }
+    }
+
+    /**
+     * Carga en la tabla de plantilla los empleados de una sucursal.
+     * Caso de uso "Gestionar sucursal" (consultar plantilla).
+     *
+     * @param s sucursal seleccionada
+     */
+    private void cargarPlantilla(Sucursal s) {
+        try {
+            tablaPlantilla.setItems(FXCollections.observableArrayList(dao.obtenerEmpleadosSucursal(s.getId())));
+        } catch (OurException e) {
+            ShowAlert.error(e.getMessage());
+        }
+    }
+
+    /**
+     * Botón "Trasladar": cambia el empleado seleccionado a la sucursal elegida en el desplegable.
+     * Caso de uso "Gestionar sucursal" (traslado de empleados).
+     *
+     * @param event evento de la pantalla
+     */
+    @FXML
+    public void btnTrasladar(ActionEvent event) {
+        Sucursal origen = tablaSucursales.getSelectionModel().getSelectedItem();
+        Empleado empleado = tablaPlantilla.getSelectionModel().getSelectedItem();
+        Sucursal destino = cmbSucursalDestino.getValue();
+        if (origen == null || empleado == null) {
+            ShowAlert.info("Aviso", "Selecciona una sucursal y después un empleado de su plantilla.");
+            return;
+        }
+        if (destino == null) {
+            ShowAlert.info("Aviso", "Elige la sucursal de destino en el desplegable.");
+            return;
+        }
+        if (destino.getId().equals(origen.getId())) {
+            ShowAlert.info("Aviso", "El empleado ya trabaja en esa sucursal.");
+            return;
+        }
+        if (!ShowAlert.confirmar("Trasladar empleado", "¿Trasladar a " + empleado.getNombre() + " a " + destino.getNombre() + "?")) {
+            return;
+        }
+        try {
+            dao.trasladarEmpleado(empleado.getId(), destino.getId());
+            ShowAlert.info("Traslado hecho", empleado.getNombre() + " ahora trabaja en " + destino.getNombre() + ".");
+            cmbSucursalDestino.setValue(null);
+            cargarPlantilla(origen);
+        } catch (OurException e) {
+            ShowAlert.error(e.getMessage());
         }
     }
 
@@ -217,5 +282,6 @@ public class GestionSucursalController {
         txtCodigoPostal.clear();
         txtHorario.clear();
         tablaSucursales.getSelectionModel().clearSelection();
+        tablaPlantilla.getItems().clear();
     }
 }

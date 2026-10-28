@@ -55,6 +55,12 @@ public class ErrorMessages {
     public static final String SAVE_SUCURSAL = "No se pudo guardar la sucursal.";
     /** Mensaje: "La sucursal tiene empleados, no se puede eliminar." */
     public static final String SUCURSAL_CON_EMPLEADOS = "La sucursal tiene empleados, no se puede eliminar.";
+    /** Mensaje: "No se pudieron cargar los clientes." */
+    public static final String GET_CLIENTES = "No se pudieron cargar los clientes.";
+    /** Mensaje: "No se pudieron eliminar los datos personales." */
+    public static final String DATOS_SENSIBLES = "No se pudieron eliminar los datos personales.";
+    /** Mensaje: "No se pudo trasladar al empleado." */
+    public static final String TRASLADO_EMPLEADO = "No se pudo trasladar al empleado.";
     /** Mensaje: "No se pudieron cargar las valoraciones." */
     public static final String GET_VALORACIONES = "No se pudieron cargar las valoraciones.";
     /** Mensaje: "No se pudo guardar la valoración." */

@@ -4,6 +4,8 @@ import dao.DAO;
 import exception.OurException;
 import exception.ShowAlert;
 import java.time.LocalDate;
+import java.util.List;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -18,6 +20,7 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
 import modelo.Cliente;
 import modelo.Contrato;
+import modelo.Sucursal;
 import modelo.Tarifa;
 import modelo.TicketSoporte;
 import modelo.Valoracion;
@@ -44,6 +47,7 @@ public class ClienteController {
     private static final String OP_CONTRATOS = "Mis Contratos";
     private static final String OP_SOPORTE = "Soporte";
     private static final String OP_VALORACIONES = "Mis Valoraciones";
+    private static final String OP_SUCURSALES = "Sucursales";
     private static final String OP_CERRAR = "Cerrar Sesion";
 
     /** Cliente que ha iniciado sesión. */
@@ -57,6 +61,7 @@ public class ClienteController {
     @FXML private AnchorPane panelContratos;
     @FXML private AnchorPane panelSoporte;
     @FXML private AnchorPane panelValoraciones;
+    @FXML private AnchorPane panelSucursales;
 
     @FXML private TextField txtNombre;
     @FXML private TextField txtNombreUsuario;
@@ -91,6 +96,13 @@ public class ClienteController {
     @FXML private ComboBox<Integer> cmbPuntuacion;
     @FXML private TextField txtValoracion;
 
+    @FXML private TableView<Sucursal> tablaSucursales;
+    @FXML private TableColumn<Sucursal, String> colSucursalNombre;
+    @FXML private TableColumn<Sucursal, String> colSucursalDireccion;
+    @FXML private TableColumn<Sucursal, String> colSucursalLocalidad;
+    @FXML private TableColumn<Sucursal, String> colSucursalTelefono;
+    @FXML private TableColumn<Sucursal, String> colSucursalHorario;
+
     /**
      * Se ejecuta al abrir la pantalla: prepara desplegables y columnas, y enseña el perfil.
      */
@@ -99,7 +111,7 @@ public class ClienteController {
         cliente = (Cliente) Sesion.getUsuario();
         lblBienvenida.setText("Bienvenido/a " + cliente.getNombre());
 
-        cmbOpciones.getItems().addAll(OP_TARIFAS, OP_CONTRATOS, OP_SOPORTE, OP_VALORACIONES, OP_CERRAR);
+        cmbOpciones.getItems().addAll(OP_TARIFAS, OP_CONTRATOS, OP_SOPORTE, OP_VALORACIONES, OP_SUCURSALES, OP_CERRAR);
         for (int i = 1; i <= 5; i++) {
             cmbPuntuacion.getItems().add(i);
         }
@@ -123,8 +135,37 @@ public class ClienteController {
         // Las celdas de texto se pueden editar con doble clic
         colValoracionTexto.setCellFactory(TextFieldTableCell.forTableColumn());
 
+        colSucursalNombre.setCellValueFactory(new PropertyValueFactory<Sucursal, String>("nombre"));
+        colSucursalDireccion.setCellValueFactory(new PropertyValueFactory<Sucursal, String>("direccion"));
+        colSucursalLocalidad.setCellValueFactory(new PropertyValueFactory<Sucursal, String>("localidad"));
+        colSucursalTelefono.setCellValueFactory(new PropertyValueFactory<Sucursal, String>("telefono"));
+        colSucursalHorario.setCellValueFactory(new PropertyValueFactory<Sucursal, String>("horario"));
+
         mostrarPanel(panelPerfil);
         cargarPerfil();
+
+        // runLater: el aviso se enseña cuando la pantalla ya está abierta, no mientras se carga
+        Platform.runLater(this::mostrarAvisos);
+    }
+
+    /**
+     * Avisa al cliente de los contratos que se han rescindido (baja aprobada o fecha de fin pasada)
+     * desde la última vez que entró. Caso de uso "Rescindir un contrato" (notificación).
+     */
+    private void mostrarAvisos() {
+        try {
+            List<Contrato> avisos = dao.obtenerAvisosCliente(cliente.getId());
+            if (avisos.isEmpty()) {
+                return;
+            }
+            String texto = "Se han rescindido estos contratos:\n";
+            for (Contrato c : avisos) {
+                texto += "\n- " + c.getNombreTarifa() + " (teléfono " + c.getTelefono() + ")";
+            }
+            ShowAlert.info("Aviso de contratos", texto);
+        } catch (OurException e) {
+            ShowAlert.error(e.getMessage());
+        }
     }
 
     /**
@@ -138,6 +179,7 @@ public class ClienteController {
         panelContratos.setVisible(false);
         panelSoporte.setVisible(false);
         panelValoraciones.setVisible(false);
+        panelSucursales.setVisible(false);
         panel.setVisible(true);
     }
 
@@ -199,6 +241,17 @@ public class ClienteController {
     }
 
     /**
+     * Carga en la tabla las tiendas de Tel-ONDA. Caso de uso "Ubicación física e información al cliente".
+     */
+    private void cargarSucursales() {
+        try {
+            tablaSucursales.setItems(FXCollections.observableArrayList(dao.obtenerSucursales()));
+        } catch (OurException e) {
+            ShowAlert.error(e.getMessage());
+        }
+    }
+
+    /**
      * Botón "Mi Perfil".
      *
      * @param event evento de la pantalla
@@ -232,6 +285,9 @@ public class ClienteController {
         } else if (opcion.equals(OP_VALORACIONES)) {
             mostrarPanel(panelValoraciones);
             cargarValoraciones();
+        } else if (opcion.equals(OP_SUCURSALES)) {
+            mostrarPanel(panelSucursales);
+            cargarSucursales();
         } else if (opcion.equals(OP_CERRAR)) {
             if (ShowAlert.confirmar("Salir", "¿Deseas salir del panel de cliente?")) {
                 Sesion.cerrar();
@@ -284,6 +340,35 @@ public class ClienteController {
             cliente = nuevo;
             Sesion.setUsuario(nuevo);
             ShowAlert.info("Modificación exitosa", "Los datos se han actualizado correctamente.");
+        } catch (OurException e) {
+            ShowAlert.error(e.getMessage());
+        }
+    }
+
+    /**
+     * Botón "Eliminar mis datos": borra DNI, teléfono, dirección y cuenta bancaria.
+     * Solo se puede si el cliente ya está dado de baja. Caso de uso "Eliminar datos sensibles del cliente".
+     *
+     * @param event evento de la pantalla
+     */
+    @FXML
+    public void btnEliminarDatos(ActionEvent event) {
+        if (!cliente.isDadoDeBaja()) {
+            ShowAlert.info("Aviso", "Primero tienes que darte de baja: rescinde tus contratos en \"Mis Contratos\".");
+            return;
+        }
+        if (!ShowAlert.confirmar("Eliminar datos personales", "Se borrarán tu DNI, teléfono, dirección y cuenta bancaria. "
+                + "No se puede deshacer. ¿Continuar?")) {
+            return;
+        }
+        try {
+            dao.eliminarDatosSensibles(cliente.getId());
+            cliente.setDni("");
+            cliente.setTelefono("");
+            cliente.setDireccion("");
+            cliente.setCuentaBancaria("");
+            cargarPerfil();
+            ShowAlert.info("Datos eliminados", "Tus datos personales se han eliminado.");
         } catch (OurException e) {
             ShowAlert.error(e.getMessage());
         }

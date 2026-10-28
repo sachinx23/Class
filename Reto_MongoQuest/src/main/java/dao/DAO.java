@@ -72,6 +72,24 @@ public interface DAO {
      */
     void actualizarCliente(Cliente cliente) throws OurException;
 
+    /**
+     * Borra los datos personales de un cliente dado de baja: DNI, teléfono, dirección y cuenta bancaria.
+     * Se conservan el nombre, el usuario y el correo para poder volver a darse de alta.
+     * Caso de uso "Eliminar datos sensibles del cliente".
+     *
+     * @param idCliente id del cliente
+     * @throws OurException si el cliente no existe o falla la base de datos
+     */
+    void eliminarDatosSensibles(String idCliente) throws OurException;
+
+    /**
+     * Devuelve los clientes que están dados de baja (para que el administrador borre sus datos).
+     *
+     * @return lista de clientes dados de baja
+     * @throws OurException si falla la base de datos
+     */
+    List<Cliente> obtenerClientesDadosDeBaja() throws OurException;
+
     // ---------- Tarifas ----------
 
     /**
@@ -155,6 +173,18 @@ public interface DAO {
      */
     void aprobarBaja(String idCliente, String idEmpleado) throws OurException;
 
+    /**
+     * Devuelve los avisos pendientes de un cliente: sus contratos cancelados o caducados de los que
+     * todavía no se le ha avisado. Los contratos activos cuya fecha de fin ya ha pasado se cancelan aquí.
+     * Después de devolverlos, se marcan como avisados para no repetir el aviso.
+     * Caso de uso "Rescindir un contrato" (notificación al cliente).
+     *
+     * @param idCliente id del cliente
+     * @return contratos de los que hay que avisar (puede estar vacía)
+     * @throws OurException si falla la base de datos
+     */
+    List<Contrato> obtenerAvisosCliente(String idCliente) throws OurException;
+
     // ---------- Tickets de soporte ----------
 
     /**
@@ -225,6 +255,24 @@ public interface DAO {
      * @throws OurException si falla la base de datos (en ese caso no se cambia nada)
      */
     void ascenderEmpleado(Empleado empleado) throws OurException;
+
+    /**
+     * Devuelve los empleados que trabajan en una sucursal. Caso de uso "Gestionar sucursal" (consultar plantilla).
+     *
+     * @param idSucursal id de la sucursal
+     * @return lista de empleados de esa sucursal
+     * @throws OurException si falla la base de datos
+     */
+    List<Empleado> obtenerEmpleadosSucursal(String idSucursal) throws OurException;
+
+    /**
+     * Cambia a un empleado de sucursal. Caso de uso "Gestionar sucursal" (traslado de empleados).
+     *
+     * @param idEmpleado      id del empleado
+     * @param idSucursalNueva id de la sucursal a la que va
+     * @throws OurException si el empleado no existe o falla la base de datos
+     */
+    void trasladarEmpleado(String idEmpleado, String idSucursalNueva) throws OurException;
 
     /**
      * Borra un empleado.

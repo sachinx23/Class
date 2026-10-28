@@ -48,6 +48,7 @@
                                 <Label layoutX="280.0" layoutY="145.0" text="Cuenta:" />
                                 <TextField fx:id="txtCuentaBancaria" layoutX="350.0" layoutY="141.0" prefWidth="200.0" />
 
+                                <Button fx:id="btnEliminarDatos" layoutX="280.0" layoutY="190.0" mnemonicParsing="false" onAction="#btnEliminarDatos" prefWidth="140.0" text="Eliminar mis datos" />
                                 <Button fx:id="btnModificar" layoutX="430.0" layoutY="190.0" mnemonicParsing="false" onAction="#btnModificar" prefWidth="120.0" text="Modificar" />
                             </children>
                         </AnchorPane>
@@ -141,6 +142,22 @@
                                 <Button fx:id="btnValorar" layoutX="445.0" layoutY="20.0" mnemonicParsing="false" onAction="#btnValorar" prefWidth="115.0" text="Valorar" />
                                 <Button fx:id="btnEditarValoracion" layoutX="445.0" layoutY="65.0" mnemonicParsing="false" onAction="#btnEditarValoracion" prefWidth="115.0" text="Editar" />
                                 <Button fx:id="btnEliminarValoracion" layoutX="445.0" layoutY="110.0" mnemonicParsing="false" onAction="#btnEliminarValoracion" prefWidth="115.0" text="Eliminar" />
+                            </children>
+                        </AnchorPane>
+
+                        <!-- PANEL SUCURSALES (solo consulta) -->
+                        <AnchorPane fx:id="panelSucursales" prefHeight="265.0" prefWidth="570.0" visible="false">
+                            <children>
+                                <Label layoutX="0.0" layoutY="0.0" text="Nuestras tiendas: ven a firmar contratos o a pedir ayuda en persona" />
+                                <TableView fx:id="tablaSucursales" layoutY="25.0" prefHeight="230.0" prefWidth="570.0">
+                                  <columns>
+                                    <TableColumn fx:id="colSucursalNombre" prefWidth="110.0" text="Tienda" />
+                                    <TableColumn fx:id="colSucursalDireccion" prefWidth="130.0" text="Dirección" />
+                                    <TableColumn fx:id="colSucursalLocalidad" prefWidth="80.0" text="Localidad" />
+                                    <TableColumn fx:id="colSucursalTelefono" prefWidth="90.0" text="Teléfono" />
+                                    <TableColumn fx:id="colSucursalHorario" prefWidth="160.0" text="Horario" />
+                                  </columns>
+                                </TableView>
                             </children>
                         </AnchorPane>
 

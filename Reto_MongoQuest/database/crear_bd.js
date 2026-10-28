@@ -18,7 +18,9 @@ db.createCollection("Clientes", {
   validator: {
     $jsonSchema: {
       bsonType: "object",
-      required: ["nombreUsuario", "nombre", "contrasena", "DNI", "correo"],
+      // El DNI no es obligatorio aquí porque se borra al "eliminar datos sensibles"
+      // (al registrarse la aplicación sí lo pide)
+      required: ["nombreUsuario", "nombre", "contrasena", "correo"],
       properties: {
         nombreUsuario: { bsonType: "string", minLength: 1 },
         nombre:        { bsonType: "string", minLength: 1 },
@@ -69,6 +71,7 @@ db.createCollection("Contratos", {
           }
         },
         estado:    { enum: ["pendiente", "activo", "baja pendiente", "cancelado"] },
+        notificado:{ bsonType: "bool" },
         idCliente: { bsonType: "objectId" },
         idTarifa:  { bsonType: "objectId" }
       }

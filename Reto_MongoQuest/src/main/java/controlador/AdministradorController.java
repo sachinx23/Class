@@ -84,6 +84,16 @@ public class AdministradorController {
     }
 
     /**
+     * Opción "Clientes dados de baja". Caso de uso "Eliminar datos sensibles del cliente".
+     *
+     * @param event pulsación del botón
+     */
+    @FXML
+    public void clientesBaja(ActionEvent event) {
+        Ventana.cargarEn(panelContenido, "/vista/ClientesBaja.fxml");
+    }
+
+    /**
      * Opción "Ver log": enseña el fichero de log en un área de texto de solo lectura.
      *
      * @param event pulsación del botón

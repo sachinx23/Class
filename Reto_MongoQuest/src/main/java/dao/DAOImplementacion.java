@@ -4,6 +4,7 @@ import com.mongodb.MongoException;
 import com.mongodb.client.MongoCollection;
 import exception.ErrorMessages;
 import exception.OurException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import log.LogApp;
@@ -194,6 +195,42 @@ public class DAOImplementacion implements DAO {
         } catch (MongoException e) {
             LogApp.error("Error modificando el cliente " + cliente.getId(), e);
             throw new OurException(ErrorMessages.UPDATE_USER);
+        }
+    }
+
+    @Override
+    public void eliminarDatosSensibles(String idCliente) throws OurException {
+        try {
+            // "$unset" quita los campos del documento (el valor "" da igual, solo importa el nombre)
+            Document camposABorrar = new Document();
+            camposABorrar.put("DNI", "");
+            camposABorrar.put("telefono", "");
+            camposABorrar.put("direccion", "");
+            camposABorrar.put("cuentaBancaria", "");
+            Document filtro = new Document("_id", new ObjectId(idCliente));
+            long encontrados = coleccion(COL_CLIENTES).updateOne(filtro, new Document("$unset", camposABorrar)).getMatchedCount();
+            if (encontrados == 0) {
+                throw new OurException(ErrorMessages.DATOS_SENSIBLES);
+            }
+            LogApp.info("Datos sensibles eliminados del cliente " + idCliente);
+        } catch (MongoException e) {
+            LogApp.error("Error eliminando los datos sensibles del cliente " + idCliente, e);
+            throw new OurException(ErrorMessages.DATOS_SENSIBLES);
+        }
+    }
+
+    @Override
+    public List<Cliente> obtenerClientesDadosDeBaja() throws OurException {
+        List<Cliente> clientes = new ArrayList<>();
+        try {
+            for (Document d : coleccion(COL_CLIENTES).find(new Document("dadoDeBaja", true))) {
+                clientes.add(documentoACliente(d));
+            }
+            LogApp.info("Consultados " + clientes.size() + " clientes dados de baja");
+            return clientes;
+        } catch (MongoException e) {
+            LogApp.error("Error consultando los clientes dados de baja", e);
+            throw new OurException(ErrorMessages.GET_CLIENTES);
         }
     }
 
@@ -395,7 +432,10 @@ public class DAOImplementacion implements DAO {
             long cancelados = coleccion(COL_CONTRATOS).updateMany(filtro, new Document("$set", cambios)).getModifiedCount();
             LogApp.info("Baja aprobada por el empleado " + idEmpleado + ": " + cancelados + " contratos cancelados del cliente " + idCliente);
 
-            // 2. Si ya no le queda ningún contrato sin cancelar, el cliente queda dado de baja (se mantiene su perfil).
+            // 2. Los contratos que ya han caducado tampoco cuentan
+            cancelarCaducados(new ObjectId(idCliente));
+
+            // 3. Si ya no le queda ningún contrato sin cancelar, el cliente queda dado de baja (se mantiene su perfil).
             //    countDocuments cuenta en MongoDB sin traer los documentos a Java
             Document filtroVivos = new Document();
             filtroVivos.put("idCliente", new ObjectId(idCliente));
@@ -408,6 +448,50 @@ public class DAOImplementacion implements DAO {
         } catch (MongoException e) {
             LogApp.error("Error aprobando la baja del cliente " + idCliente, e);
             throw new OurException(ErrorMessages.BAJA_CONTRATO);
+        }
+    }
+
+    /**
+     * Cancela los contratos activos de un cliente cuya fecha de fin ya ha pasado.
+     *
+     * @param idCliente id del cliente
+     * @throws OurException si no hay conexión con MongoDB
+     */
+    private void cancelarCaducados(ObjectId idCliente) throws OurException {
+        // Las fechas son texto "aaaa-mm-dd", así que se pueden comparar como texto. "$lt" = menor que
+        Document caducados = new Document();
+        caducados.put("idCliente", idCliente);
+        caducados.put("estado", ESTADO_ACTIVO);
+        caducados.put("fechaFinalizacion", new Document("$lt", LocalDate.now().toString()));
+        long cancelados = coleccion(COL_CONTRATOS).updateMany(caducados,
+                new Document("$set", new Document("estado", ESTADO_CANCELADO))).getModifiedCount();
+        if (cancelados > 0) {
+            LogApp.info(cancelados + " contratos caducados cancelados del cliente " + idCliente);
+        }
+    }
+
+    @Override
+    public List<Contrato> obtenerAvisosCliente(String idCliente) throws OurException {
+        try {
+            ObjectId id = new ObjectId(idCliente);
+
+            // 1. Los contratos activos cuya fecha de fin ya ha pasado se cancelan
+            cancelarCaducados(id);
+
+            // 2. Contratos cancelados de los que todavía no se ha avisado ("$ne" = distinto de)
+            Document sinAvisar = new Document();
+            sinAvisar.put("idCliente", id);
+            sinAvisar.put("estado", ESTADO_CANCELADO);
+            sinAvisar.put("notificado", new Document("$ne", true));
+            List<Contrato> avisos = buscarContratos(sinAvisar);
+
+            // 3. Se marcan como avisados para no repetir el aviso la próxima vez
+            coleccion(COL_CONTRATOS).updateMany(sinAvisar, new Document("$set", new Document("notificado", true)));
+            LogApp.info("Avisos del cliente " + idCliente + ": " + avisos.size() + " contratos rescindidos");
+            return avisos;
+        } catch (MongoException e) {
+            LogApp.error("Error consultando los avisos del cliente " + idCliente, e);
+            throw new OurException(ErrorMessages.GET_CONTRATOS);
         }
     }
 
@@ -586,6 +670,35 @@ public class DAOImplementacion implements DAO {
                 LogApp.error("No se pudo deshacer el ascenso del empleado " + empleado.getId(), e2);
             }
             throw new OurException(ErrorMessages.ASCENDER_EMPLEADO);
+        }
+    }
+
+    @Override
+    public List<Empleado> obtenerEmpleadosSucursal(String idSucursal) throws OurException {
+        List<Empleado> empleados = new ArrayList<>();
+        try {
+            for (Document d : coleccion(COL_EMPLEADOS).find(new Document("idSucursal", new ObjectId(idSucursal)))) {
+                empleados.add(documentoAEmpleado(d));
+            }
+            LogApp.info("Consultados " + empleados.size() + " empleados de la sucursal " + idSucursal);
+            return empleados;
+        } catch (MongoException e) {
+            LogApp.error("Error consultando los empleados de la sucursal " + idSucursal, e);
+            throw new OurException(ErrorMessages.GET_EMPLEADOS);
+        }
+    }
+
+    @Override
+    public void trasladarEmpleado(String idEmpleado, String idSucursalNueva) throws OurException {
+        try {
+            Document cambios = new Document("idSucursal", new ObjectId(idSucursalNueva));
+            if (!modificar(COL_EMPLEADOS, idEmpleado, cambios)) {
+                throw new OurException(ErrorMessages.TRASLADO_EMPLEADO);
+            }
+            LogApp.info("Empleado " + idEmpleado + " trasladado a la sucursal " + idSucursalNueva);
+        } catch (MongoException e) {
+            LogApp.error("Error trasladando el empleado " + idEmpleado, e);
+            throw new OurException(ErrorMessages.TRASLADO_EMPLEADO);
         }
     }
 

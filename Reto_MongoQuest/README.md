@@ -102,6 +102,8 @@ Por qué embebido o referenciado:
 Estados:
 
 - **Contrato:** `pendiente` → (el empleado valida) → `activo` → (el cliente pide la baja) → `baja pendiente` → (el empleado la aprueba) → `cancelado`.
+  Un contrato `activo` cuya fecha de fin ya ha pasado también pasa a `cancelado`.
+  El campo `notificado` indica si ya se ha avisado al cliente de la cancelación.
 - **Ticket:** `pendiente` → `en proceso` → `resuelto` / `cerrado`.
 
 ---
@@ -127,6 +129,9 @@ El administrador puede leerlo desde la aplicación: **Menú → Ver log**.
 | Todos         | Iniciar sesión / Cerrar sesión                | IniciarSesion · Opciones → Cerrar sesión          |
 | Cliente       | Crear usuario (registrarse)                   | IniciarSesion → Registrarse                       |
 | Cliente       | Consultar y modificar datos personales        | Mi Perfil                                         |
+| Cliente       | Eliminar sus datos sensibles (si está dado de baja) | Mi Perfil → Eliminar mis datos              |
+| Cliente       | Aviso de contratos rescindidos o caducados    | Sale solo al entrar en el panel                   |
+| Cliente       | Consultar las tiendas (sucursales)            | Opciones → Sucursales                             |
 | Cliente       | Elegir / cambiar / eliminar tarifa            | Opciones → Mis Tarifas                            |
 | Cliente       | Consultar, firmar y rescindir contratos       | Opciones → Mis Contratos                          |
 | Cliente       | Crear ticket                                  | Opciones → Soporte                                |
@@ -136,5 +141,7 @@ El administrador puede leerlo desde la aplicación: **Menú → Ver log**.
 | Empleado      | Consultar tickets y cambiar su estado         | Opciones → Tickets pendientes                     |
 | Administrador | Crear empleado, ascender, borrar empleado     | Menú                                              |
 | Administrador | Crear, modificar y eliminar sucursales        | Menú → Gestion Sucursal                           |
+| Administrador | Consultar la plantilla y trasladar empleados  | Menú → Gestion Sucursal (clic en una sucursal)    |
+| Administrador | Eliminar datos sensibles de clientes de baja  | Menú → Clientes dados de baja                     |
 | Administrador | Ver el log                                    | Menú → Ver log                                    |
 

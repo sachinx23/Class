@@ -19,6 +19,7 @@
                         <MenuItem mnemonicParsing="false" onAction="#cambiarPuesto" text="Cambiar puesto" />
                         <MenuItem mnemonicParsing="false" onAction="#borrarEmpleado" text="Borrar cuenta empleado" />
                         <MenuItem mnemonicParsing="false" onAction="#gestionSucursal" text="Gestion Sucursal" />
+                        <MenuItem mnemonicParsing="false" onAction="#clientesBaja" text="Clientes dados de baja" />
                         <MenuItem mnemonicParsing="false" onAction="#verLog" text="Ver log" />
                         <MenuItem mnemonicParsing="false" onAction="#cerrarSesion" text="Cerrar sesión" />
                     </items>
