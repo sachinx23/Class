@@ -1,7 +1,7 @@
 package com.mycompany.reto_1;
 
+import controlador.Sesion;
 import controlador.Ventana;
-import dao.MongoConnection;
 import exception.OurException;
 import exception.ShowAlert;
 import javafx.application.Application;
@@ -14,7 +14,7 @@ import javafx.stage.Stage;
 /**
  * Aplicación Tel-ONDA (JavaFX).
  * <p>
- * Al arrancar se conecta a MongoDB y abre la pantalla de inicio de sesión.
+ * Al arrancar se conecta a la base de datos y abre la pantalla de inicio de sesión.
  */
 public class Reto_1 extends Application {
 
@@ -23,11 +23,6 @@ public class Reto_1 extends Application {
      */
     public Reto_1() {
     }
-
-    /** Dirección de MongoDB. Si en 5 segundos no responde, se muestra un error. */
-    private static final String URI = "mongodb://localhost:27017/?serverSelectionTimeoutMS=5000";
-    /** Nombre de la base de datos (la crea el script database/crear_bd.js). */
-    private static final String BASE_DATOS = "Tel--ONDA";
 
     /**
      * Se ejecuta al abrir la aplicación.
@@ -39,8 +34,9 @@ public class Reto_1 extends Application {
     public void start(Stage primaryStage) throws Exception {
         // La conexión se abre una sola vez al arrancar y se cierra en stop()
         try {
-            MongoConnection.connect(URI, BASE_DATOS);
+            Sesion.getDao().conectar();
         } catch (OurException e) {
+            // Si MongoDB está apagado, se avisa y se cierra la aplicación
             ShowAlert.error(e.getMessage());
             Platform.exit();
             return;
@@ -54,11 +50,11 @@ public class Reto_1 extends Application {
     }
 
     /**
-     * Se ejecuta al cerrar la aplicación: cierra la conexión con MongoDB.
+     * Se ejecuta al cerrar la aplicación: cierra la conexión con la base de datos.
      */
     @Override
     public void stop() {
-        MongoConnection.close();
+        Sesion.getDao().cerrar();
     }
 
     /**

@@ -44,6 +44,20 @@ public interface DAO {
     /** El ticket se ha cerrado sin más cambios. */
     String TICKET_CERRADO = "cerrado";
 
+    // ---------- Conexión ----------
+
+    /**
+     * Abre la conexión con la base de datos. Se llama una vez al arrancar la aplicación.
+     *
+     * @throws OurException si la base de datos no está arrancada o no se puede conectar
+     */
+    void conectar() throws OurException;
+
+    /**
+     * Cierra la conexión con la base de datos. Se llama al cerrar la aplicación.
+     */
+    void cerrar();
+
     // ---------- Login y clientes ----------
 
     /**

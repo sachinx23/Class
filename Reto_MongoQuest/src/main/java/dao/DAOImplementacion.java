@@ -1,7 +1,10 @@
 package dao;
 
 import com.mongodb.MongoException;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
 import exception.ErrorMessages;
 import exception.OurException;
 import java.time.LocalDate;
@@ -57,6 +60,45 @@ public class DAOImplementacion implements DAO {
     /** Nombre de la colección de valoraciones. */
     private static final String COL_VALORACIONES = "Valoraciones";
 
+    /** Dirección de MongoDB. Si en 5 segundos no responde, se da un error. */
+    private static final String URI = "mongodb://localhost:27017/?serverSelectionTimeoutMS=5000";
+    /** Nombre de la base de datos (la crea el script database/crear_bd.js). */
+    private static final String BASE_DATOS = "Tel--ONDA";
+
+    /** Conexión con MongoDB. null si no está conectado. */
+    private MongoClient cliente;
+    /** Base de datos con la que trabaja la aplicación. null si no está conectado. */
+    private MongoDatabase baseDatos;
+
+    // ---------- CONEXIÓN ----------
+
+    @Override
+    public void conectar() throws OurException {
+        try {
+            // 1. Se abre la conexión y se elige la base de datos
+            cliente = MongoClients.create(URI);
+            baseDatos = cliente.getDatabase(BASE_DATOS);
+
+            // 2. MongoDB no se conecta de verdad hasta la primera consulta.
+            //    Se hace una consulta pequeña para saber ya si MongoDB está encendido
+            baseDatos.listCollectionNames().first();
+            LogApp.info("Conectado a MongoDB, base de datos " + BASE_DATOS);
+        } catch (MongoException e) {
+            LogApp.error("Conectar con MongoDB", e);
+            cerrar();
+            throw new OurException(ErrorMessages.DATABASE);
+        }
+    }
+
+    @Override
+    public void cerrar() {
+        if (cliente != null) {
+            cliente.close();
+            cliente = null;
+            baseDatos = null;
+        }
+    }
+
     /**
      * Devuelve una colección de la base de datos.
      *
@@ -65,7 +107,10 @@ public class DAOImplementacion implements DAO {
      * @throws OurException si no hay conexión con MongoDB
      */
     private MongoCollection<Document> coleccion(String nombre) throws OurException {
-        return MongoConnection.getDatabase().getCollection(nombre);
+        if (baseDatos == null) {
+            throw new OurException(ErrorMessages.DATABASE);
+        }
+        return baseDatos.getCollection(nombre);
     }
 
     // ---------- LOGIN Y CLIENTES ----------

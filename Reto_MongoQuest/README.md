@@ -51,7 +51,7 @@ Otros comandos útiles:
  Interfaz DAO            dao/DAO.java                         -> QUÉ operaciones hay
         |
  Implementación DAO      dao/DAOImplementacion.java           -> CÓMO se hacen con MongoDB
-        |                dao/MongoConnection.java             -> abre y cierra la conexión
+        |                (también abre y cierra la conexión: conectar() y cerrar())
         |
  Base de datos           MongoDB "Tel--ONDA"                  (database/crear_bd.js)
 ```
