@@ -1,6 +1,5 @@
 package controlador;
 
-import dao.DAOImplementacion;
 import dao.DAO;
 import exception.OurException;
 import exception.ShowAlert;
@@ -23,16 +22,31 @@ import modelo.Tarifa;
 import modelo.TicketSoporte;
 import modelo.Valoracion;
 
+/**
+ * Panel de cliente (Cliente.fxml).
+ * <p>
+ * Desde el desplegable "Opciones" se cambia de panel: tarifas, contratos, soporte y valoraciones.
+ * Solo se ve un panel a la vez.
+ */
 public class ClienteController {
 
+    /**
+     * Constructor vacío. JavaFX crea el controlador al cargar el FXML.
+     */
+    public ClienteController() {
+    }
+
+    /** Acceso a la base de datos. */
     private final DAO dao = Sesion.getDao();
 
+    // Textos del desplegable de opciones
     private static final String OP_TARIFAS = "Mis Tarifas";
     private static final String OP_CONTRATOS = "Mis Contratos";
     private static final String OP_SOPORTE = "Soporte";
     private static final String OP_VALORACIONES = "Mis Valoraciones";
     private static final String OP_CERRAR = "Cerrar Sesion";
 
+    /** Cliente que ha iniciado sesión. */
     private Cliente cliente;
 
     @FXML private Label lblBienvenida;
@@ -77,6 +91,9 @@ public class ClienteController {
     @FXML private ComboBox<Integer> cmbPuntuacion;
     @FXML private TextField txtValoracion;
 
+    /**
+     * Se ejecuta al abrir la pantalla: prepara desplegables y columnas, y enseña el perfil.
+     */
     @FXML
     public void initialize() {
         cliente = (Cliente) Sesion.getUsuario();
@@ -110,6 +127,11 @@ public class ClienteController {
         cargarPerfil();
     }
 
+    /**
+     * Enseña un panel y oculta los demás.
+     *
+     * @param panel panel que se quiere ver
+     */
     private void mostrarPanel(AnchorPane panel) {
         panelPerfil.setVisible(false);
         panelTarifas.setVisible(false);
@@ -119,6 +141,9 @@ public class ClienteController {
         panel.setVisible(true);
     }
 
+    /**
+     * Rellena el formulario de perfil con los datos del cliente. Caso de uso "Consultar datos personales".
+     */
     private void cargarPerfil() {
         txtNombre.setText(cliente.getNombre());
         txtNombreUsuario.setText(cliente.getNombreUsuario());
@@ -129,6 +154,9 @@ public class ClienteController {
         txtCuentaBancaria.setText(cliente.getCuentaBancaria());
     }
 
+    /**
+     * Carga en la tabla las tarifas que se pueden contratar.
+     */
     private void cargarTarifas() {
         try {
             tablaTarifas.setItems(FXCollections.observableArrayList(dao.obtenerTarifas()));
@@ -137,6 +165,9 @@ public class ClienteController {
         }
     }
 
+    /**
+     * Carga en la tabla los contratos del cliente. Caso de uso "Consultar contratos".
+     */
     private void cargarContratos() {
         try {
             tablaContratos.setItems(FXCollections.observableArrayList(dao.obtenerContratosCliente(cliente.getId())));
@@ -145,6 +176,9 @@ public class ClienteController {
         }
     }
 
+    /**
+     * Carga en la tabla los tickets del cliente.
+     */
     private void cargarTickets() {
         try {
             tablaSoporte.setItems(FXCollections.observableArrayList(dao.obtenerTicketsCliente(cliente.getId())));
@@ -153,6 +187,9 @@ public class ClienteController {
         }
     }
 
+    /**
+     * Carga en la tabla las valoraciones del cliente. Caso de uso "Ver mis valoraciones".
+     */
     private void cargarValoraciones() {
         try {
             tablaValoraciones.setItems(FXCollections.observableArrayList(dao.obtenerValoracionesCliente(cliente.getId())));
@@ -161,12 +198,22 @@ public class ClienteController {
         }
     }
 
+    /**
+     * Botón "Mi Perfil".
+     *
+     * @param event evento de la pantalla
+     */
     @FXML
     public void btnMiPerfil(ActionEvent event) {
         mostrarPanel(panelPerfil);
         cargarPerfil();
     }
 
+    /**
+     * Desplegable "Opciones": enseña el panel elegido o cierra la sesión.
+     *
+     * @param event evento de la pantalla
+     */
     @FXML
     public void cmbOpcionSeleccionada(ActionEvent event) {
         String opcion = cmbOpciones.getValue();
@@ -195,44 +242,58 @@ public class ClienteController {
         cmbOpciones.getSelectionModel().clearSelection();
     }
 
+    /**
+     * Botón "Modificar": valida y guarda los datos personales.
+     *
+     * @param event evento de la pantalla
+     */
     @FXML
     public void btnModificar(ActionEvent event) {
         String nombre = txtNombre.getText().trim();
         String nombreUsuario = txtNombreUsuario.getText().trim();
         String dni = txtDni.getText().trim().toUpperCase();
         String correo = txtCorreo.getText().trim();
+        String telefono = txtTelefono.getText().trim();
 
         if (nombre.isEmpty() || nombreUsuario.isEmpty()) {
             ShowAlert.info("Datos inválidos", "El nombre y el nombre de usuario son obligatorios.");
             return;
         }
-        if (!dni.matches("[0-9]{8}[A-Z]")) {
+        if (!Validaciones.dniValido(dni)) {
             ShowAlert.info("Datos inválidos", "DNI introducido incorrectamente.");
             return;
         }
-        if (!correo.contains("@") || !correo.contains(".")) {
+        if (!Validaciones.correoValido(correo)) {
             ShowAlert.info("Datos inválidos", "El correo no es válido.");
+            return;
+        }
+        if (!Validaciones.telefonoValido(telefono)) {
+            ShowAlert.info("Datos inválidos", "El teléfono no es válido.");
             return;
         }
         if (!ShowAlert.confirmar("Confirmar cambios", "¿Seguro que deseas guardar los cambios?")) {
             return;
         }
 
-        cliente.setNombre(nombre);
-        cliente.setNombreUsuario(nombreUsuario);
-        cliente.setDni(dni);
-        cliente.setCorreo(correo);
-        cliente.setDireccion(txtDireccion.getText().trim());
-        cliente.setTelefono(txtTelefono.getText().trim());
-        cliente.setCuentaBancaria(txtCuentaBancaria.getText().trim());
+        // Se crea un objeto nuevo con los cambios. Solo si se guarda bien pasa a ser el usuario de la sesión
+        Cliente nuevo = new Cliente(cliente.getId(), nombre, nombreUsuario, cliente.getContrasena(), correo,
+                txtCuentaBancaria.getText().trim(), dni, telefono, txtDireccion.getText().trim());
+        nuevo.setDadoDeBaja(cliente.isDadoDeBaja());
         try {
-            dao.actualizarCliente(cliente);
+            dao.actualizarCliente(nuevo);
+            cliente = nuevo;
+            Sesion.setUsuario(nuevo);
             ShowAlert.info("Modificación exitosa", "Los datos se han actualizado correctamente.");
         } catch (OurException e) {
             ShowAlert.error(e.getMessage());
         }
     }
 
+    /**
+     * Botón "Cambiar tarifa": pide la tarifa seleccionada. Queda pendiente hasta que la valide un empleado. Casos de uso "Elegir tarifa" y "Cambiar tarifa".
+     *
+     * @param event evento de la pantalla
+     */
     @FXML
     public void btnCambiarTarifa(ActionEvent event) {
         Tarifa tarifa = tablaTarifas.getSelectionModel().getSelectedItem();
@@ -245,7 +306,7 @@ public class ClienteController {
         }
         // Se guarda como petición pendiente: un empleado la valida en "Validar tarifas"
         LocalDate hoy = LocalDate.now();
-        Contrato contrato = new Contrato(null, cliente.getTelefono(), DAOImplementacion.ESTADO_PENDIENTE, cliente.getId(),
+        Contrato contrato = new Contrato(null, cliente.getTelefono(), DAO.ESTADO_PENDIENTE, cliente.getId(),
                 tarifa.getId(), null, hoy.toString(), hoy.plusYears(1).toString());
         contrato.setNombreTarifa(tarifa.getNombreTarifa());
         contrato.setPrecio(tarifa.getPrecio());
@@ -258,6 +319,11 @@ public class ClienteController {
         }
     }
 
+    /**
+     * Botón "Eliminar tarifa": borra la petición pendiente de la tarifa seleccionada. Caso de uso "Eliminar tarifa".
+     *
+     * @param event evento de la pantalla
+     */
     @FXML
     public void btnEliminarTarifa(ActionEvent event) {
         Tarifa tarifa = tablaTarifas.getSelectionModel().getSelectedItem();
@@ -281,6 +347,11 @@ public class ClienteController {
         }
     }
 
+    /**
+     * Botón "Firmar contrato": informa del estado del contrato seleccionado. Caso de uso "Firmar contrato".
+     *
+     * @param event evento de la pantalla
+     */
     @FXML
     public void btnFirmarContrato(ActionEvent event) {
         Contrato contrato = tablaContratos.getSelectionModel().getSelectedItem();
@@ -289,15 +360,20 @@ public class ClienteController {
             return;
         }
         // El contrato queda firmado cuando un empleado valida la tarifa (pasa a "activo")
-        if (contrato.getEstado().equals(DAOImplementacion.ESTADO_ACTIVO)) {
+        if (contrato.getEstado().equals(DAO.ESTADO_ACTIVO)) {
             ShowAlert.info("Contrato firmado", "Este contrato ya está firmado y activo.");
-        } else if (contrato.getEstado().equals(DAOImplementacion.ESTADO_PENDIENTE)) {
+        } else if (contrato.getEstado().equals(DAO.ESTADO_PENDIENTE)) {
             ShowAlert.info("Contrato pendiente", "Este contrato se firmará cuando un empleado valide la tarifa.");
         } else {
             ShowAlert.info("Aviso", "Este contrato no se puede firmar porque está " + contrato.getEstado() + ".");
         }
     }
 
+    /**
+     * Botón "Rescindir contrato": pide la baja del contrato seleccionado. Caso de uso "Rescindir un contrato".
+     *
+     * @param event evento de la pantalla
+     */
     @FXML
     public void btnRescindirContrato(ActionEvent event) {
         Contrato contrato = tablaContratos.getSelectionModel().getSelectedItem();
@@ -305,7 +381,7 @@ public class ClienteController {
             ShowAlert.info("Aviso", "Selecciona un contrato de la tabla primero.");
             return;
         }
-        if (!contrato.getEstado().equals(DAOImplementacion.ESTADO_ACTIVO)) {
+        if (!contrato.getEstado().equals(DAO.ESTADO_ACTIVO)) {
             ShowAlert.info("Aviso", "Solo se puede pedir la baja de un contrato activo.");
             return;
         }
@@ -322,6 +398,11 @@ public class ClienteController {
         }
     }
 
+    /**
+     * Botón "Enviar ticket": guarda una incidencia nueva. Caso de uso "Crear ticket".
+     *
+     * @param event evento de la pantalla
+     */
     @FXML
     public void btnEnviarTicket(ActionEvent event) {
         String asunto = txtSoporteAsunto.getText().trim();
@@ -333,7 +414,7 @@ public class ClienteController {
         if (!ShowAlert.confirmar("Confirmar envío", "¿Seguro que deseas enviar este ticket?")) {
             return;
         }
-        TicketSoporte ticket = new TicketSoporte(null, asunto, descripcion, LocalDate.now().toString(), "pendiente",
+        TicketSoporte ticket = new TicketSoporte(null, asunto, descripcion, LocalDate.now().toString(), DAO.TICKET_PENDIENTE,
                 cliente.getId(), null);
         try {
             dao.insertarTicket(ticket);
@@ -346,6 +427,11 @@ public class ClienteController {
         }
     }
 
+    /**
+     * Clic en la tabla de valoraciones: copia la valoración seleccionada al formulario.
+     *
+     * @param event evento de la pantalla
+     */
     @FXML
     public void seleccionarValoracion(MouseEvent event) {
         Valoracion valoracion = tablaValoraciones.getSelectionModel().getSelectedItem();
@@ -355,6 +441,11 @@ public class ClienteController {
         }
     }
 
+    /**
+     * Comprueba que se ha elegido una puntuación y escrito una opinión.
+     *
+     * @return true si el formulario de valoración es correcto
+     */
     private boolean valoracionValida() {
         if (cmbPuntuacion.getValue() == null || txtValoracion.getText().trim().isEmpty()) {
             ShowAlert.info("Aviso", "Elige una puntuación y escribe tu opinión.");
@@ -363,6 +454,11 @@ public class ClienteController {
         return true;
     }
 
+    /**
+     * Botón "Valorar": publica una valoración nueva. Caso de uso "Valorar".
+     *
+     * @param event evento de la pantalla
+     */
     @FXML
     public void btnValorar(ActionEvent event) {
         if (!valoracionValida()) {
@@ -382,6 +478,11 @@ public class ClienteController {
         }
     }
 
+    /**
+     * Botón "Editar": guarda los cambios de la valoración seleccionada. Caso de uso "Editar valoración".
+     *
+     * @param event evento de la pantalla
+     */
     @FXML
     public void btnEditarValoracion(ActionEvent event) {
         Valoracion valoracion = tablaValoraciones.getSelectionModel().getSelectedItem();
@@ -400,7 +501,11 @@ public class ClienteController {
         guardarValoracion(valoracion);
     }
 
-    // Se llama al terminar de editar una celda de texto en la tabla
+    /**
+     * Se ejecuta al terminar de editar (doble clic + Enter) una celda de texto de la tabla de valoraciones.
+     *
+     * @param event evento de edición: tiene la fila editada y el texto nuevo
+     */
     @FXML
     public void editarTextoValoracion(TableColumn.CellEditEvent<Valoracion, String> event) {
         Valoracion valoracion = event.getRowValue();
@@ -414,6 +519,11 @@ public class ClienteController {
         guardarValoracion(valoracion);
     }
 
+    /**
+     * Guarda una valoración modificada y recarga la tabla.
+     *
+     * @param valoracion valoración con los cambios
+     */
     private void guardarValoracion(Valoracion valoracion) {
         try {
             dao.actualizarValoracion(valoracion);
@@ -425,6 +535,11 @@ public class ClienteController {
         cargarValoraciones();
     }
 
+    /**
+     * Botón "Eliminar": borra la valoración seleccionada.
+     *
+     * @param event evento de la pantalla
+     */
     @FXML
     public void btnEliminarValoracion(ActionEvent event) {
         Valoracion valoracion = tablaValoraciones.getSelectionModel().getSelectedItem();
@@ -445,6 +560,9 @@ public class ClienteController {
         }
     }
 
+    /**
+     * Vacía el formulario de valoración.
+     */
     private void limpiarValoracion() {
         cmbPuntuacion.setValue(null);
         txtValoracion.clear();

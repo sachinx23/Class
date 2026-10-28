@@ -10,8 +10,18 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import modelo.Cliente;
 
+/**
+ * Pantalla de registro de clientes nuevos (Registrarse.fxml). Caso de uso "Crear usuario".
+ */
 public class RegistrarseController {
 
+    /**
+     * Constructor vacío. JavaFX crea el controlador al cargar el FXML.
+     */
+    public RegistrarseController() {
+    }
+
+    /** Acceso a la base de datos. */
     private final DAO dao = Sesion.getDao();
 
     @FXML private TextField txtUsuario;
@@ -21,8 +31,14 @@ public class RegistrarseController {
     @FXML private TextField txtDni;
     @FXML private TextField txtTelefono;
     @FXML private TextField txtDireccion;
+    /** Etiqueta roja donde se escriben los errores del formulario. */
     @FXML private Label lblMensajeError;
 
+    /**
+     * Botón "Registrarse": valida el formulario y guarda el cliente nuevo.
+     *
+     * @param event pulsación del botón
+     */
     @FXML
     public void btnRegistrarse(ActionEvent event) {
         String usuario = txtUsuario.getText().trim();
@@ -33,25 +49,9 @@ public class RegistrarseController {
         String telefono = txtTelefono.getText().trim();
         String direccion = txtDireccion.getText().trim();
 
-        if (usuario.isEmpty() || nombre.isEmpty() || contrasena.isEmpty() || correo.isEmpty()
-                || dni.isEmpty() || telefono.isEmpty() || direccion.isEmpty()) {
-            lblMensajeError.setText("Por favor, rellena todos los campos.");
-            return;
-        }
-        if (!correo.contains("@") || !correo.contains(".")) {
-            lblMensajeError.setText("El correo no es válido.");
-            return;
-        }
-        if (!dni.matches("[0-9]{8}[A-Z]")) {
-            lblMensajeError.setText("DNI introducido incorrectamente.");
-            return;
-        }
-        if (!telefono.matches("[0-9 ]{9,15}")) {
-            lblMensajeError.setText("El teléfono no es válido.");
-            return;
-        }
-        if (contrasena.length() < 4) {
-            lblMensajeError.setText("La contraseña debe tener mínimo 4 caracteres.");
+        String error = comprobar(usuario, nombre, contrasena, correo, dni, telefono, direccion);
+        if (error != null) {
+            lblMensajeError.setText(error);
             return;
         }
         lblMensajeError.setText("");
@@ -66,6 +66,37 @@ public class RegistrarseController {
         }
     }
 
+    /**
+     * Comprueba el formulario de registro.
+     *
+     * @return el mensaje de error, o null si todo es correcto
+     */
+    private String comprobar(String usuario, String nombre, String contrasena, String correo,
+            String dni, String telefono, String direccion) {
+        if (usuario.isEmpty() || nombre.isEmpty() || contrasena.isEmpty() || correo.isEmpty()
+                || dni.isEmpty() || telefono.isEmpty() || direccion.isEmpty()) {
+            return "Por favor, rellena todos los campos.";
+        }
+        if (!Validaciones.correoValido(correo)) {
+            return "El correo no es válido.";
+        }
+        if (!Validaciones.dniValido(dni)) {
+            return "DNI introducido incorrectamente.";
+        }
+        if (!Validaciones.telefonoValido(telefono)) {
+            return "El teléfono no es válido.";
+        }
+        if (!Validaciones.contrasenaValida(contrasena)) {
+            return "La contraseña debe tener mínimo " + Validaciones.MIN_CONTRASENA + " caracteres.";
+        }
+        return null;
+    }
+
+    /**
+     * Botón "Salir": vuelve al inicio de sesión si el usuario lo confirma.
+     *
+     * @param event pulsación del botón
+     */
     @FXML
     public void btnSalir(ActionEvent event) {
         if (ShowAlert.confirmar("Cancelar registro", "¿Seguro que deseas cancelar el registro?")) {

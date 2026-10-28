@@ -12,14 +12,32 @@ import modelo.Administrador;
 import modelo.Empleado;
 import modelo.Usuario;
 
+/**
+ * Pantalla de inicio de sesión (IniciarSesion.fxml).
+ * <p>
+ * Según el tipo de usuario abre el panel de administrador, de empleado o de cliente.
+ */
 public class IniciarSesionController {
 
+    /**
+     * Constructor vacío. JavaFX crea el controlador al cargar el FXML.
+     */
+    public IniciarSesionController() {
+    }
+
+    /** Acceso a la base de datos. */
     private final DAO dao = Sesion.getDao();
 
     @FXML private TextField txtUsuario;
     @FXML private PasswordField txtContrasena;
+    /** Etiqueta roja donde se escriben los errores del formulario. */
     @FXML private Label lblMensajeError;
 
+    /**
+     * Botón "Iniciar sesión": comprueba los datos y abre el panel que le toca al usuario.
+     *
+     * @param event pulsación del botón
+     */
     @FXML
     public void btnIniciarSesion(ActionEvent event) {
         String nombreUsuario = txtUsuario.getText().trim();
@@ -55,6 +73,11 @@ public class IniciarSesionController {
         }
     }
 
+    /**
+     * Botón "Registrarse": abre el formulario de registro de clientes.
+     *
+     * @param event pulsación del botón
+     */
     @FXML
     public void btnRegistrarse(ActionEvent event) {
         Ventana.cambiar(txtUsuario, "/vista/Registrarse.fxml");

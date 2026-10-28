@@ -1,4 +1,10 @@
 // Script para crear la base de datos Tel--ONDA con esquemas de validación.
+//
+// Modelo de datos (8 colecciones):
+//   - Información EMBEBIDA:  Contratos.tarifa  y  Sucursales.Ubicacion
+//   - ARRAY DE _id:          Clientes.ticketSoporte  (ids de TicketsSoportes)
+//   - Referencias (_id):     Contratos -> Clientes/Tarifas/Empleados, Empleados -> Sucursales,
+//                            TicketsSoportes -> Clientes/Empleados, Valoraciones -> Clientes/Tarifas
 // Ejecutar con:  mongosh "mongodb://localhost:27017" database/crear_bd.js
 // (o copiar y pegar en la consola mongosh de Compass)
 
@@ -70,11 +76,70 @@ db.createCollection("Contratos", {
   }
 });
 
-// ---------------------------------------------------------------- Resto
-db.createCollection("Empleados");
-db.createCollection("Administradores");
-db.createCollection("TicketsSoportes");
-db.createCollection("Sucursales");
+// ---------------------------------------------------------------- Empleados y Administradores
+// Tienen los mismos campos; los empleados además pueden tener idSucursal
+const esquemaPersonal = {
+  bsonType: "object",
+  required: ["nombre", "nombreUsuario", "rol", "contrasena", "correo"],
+  properties: {
+    nombre:         { bsonType: "string", minLength: 1 },
+    nombreUsuario:  { bsonType: "string", minLength: 1 },
+    rol:            { enum: ["Empleado", "Admin"] },
+    contrasena:     { bsonType: "string", minLength: 4 },
+    correo:         { bsonType: "string", pattern: "^.+@.+\\..+$" },
+    cuentaBancaria: { bsonType: "string" },
+    idSucursal:     { bsonType: ["objectId", "null"] }
+  }
+};
+db.createCollection("Empleados", { validator: { $jsonSchema: esquemaPersonal } });
+db.createCollection("Administradores", { validator: { $jsonSchema: esquemaPersonal } });
+db.Empleados.createIndex({ nombreUsuario: 1 }, { unique: true });
+db.Administradores.createIndex({ nombreUsuario: 1 }, { unique: true });
+
+// ---------------------------------------------------------------- Tickets de soporte
+db.createCollection("TicketsSoportes", {
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["asunto", "descripcion", "fechaCreacion", "estado", "idCliente"],
+      properties: {
+        asunto:        { bsonType: "string", minLength: 1 },
+        descripcion:   { bsonType: "string", minLength: 1 },
+        fechaCreacion: { bsonType: "string" },
+        estado:        { enum: ["pendiente", "en proceso", "resuelto", "cerrado"] },
+        idCliente:     { bsonType: "objectId" },
+        idEmpleado:    { bsonType: ["objectId", "null"] }
+      }
+    }
+  }
+});
+
+// ---------------------------------------------------------------- Sucursales
+// "Ubicacion" es un documento embebido con la dirección
+db.createCollection("Sucursales", {
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["nombre", "telefono", "Ubicacion"],
+      properties: {
+        nombre:   { bsonType: "string", minLength: 1 },
+        horario:  { bsonType: "string" },
+        telefono: { bsonType: "string", minLength: 1 },
+        Ubicacion: {
+          bsonType: "object",
+          required: ["Direccion"],
+          properties: {
+            Direccion:    { bsonType: "string", minLength: 1 },
+            Localidad:    { bsonType: "string" },
+            CodigoPostal: { bsonType: "int" }
+          }
+        }
+      }
+    }
+  }
+});
+
+// ---------------------------------------------------------------- Valoraciones
 db.createCollection("Valoraciones", {
   validator: {
     $jsonSchema: {
@@ -122,4 +187,4 @@ db.Clientes.insertOne({
   cuentaBancaria: "ES7921000813610123456789", dadoDeBaja: false, ticketSoporte: []
 });
 
-print("Base de datos Tel--ONDA creada");
+print("Base de datos " + db.getName() + " creada");

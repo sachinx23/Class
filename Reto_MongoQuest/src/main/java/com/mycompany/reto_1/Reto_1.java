@@ -11,12 +11,30 @@ import javafx.scene.Parent;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
+/**
+ * Aplicación Tel-ONDA (JavaFX).
+ * <p>
+ * Al arrancar se conecta a MongoDB y abre la pantalla de inicio de sesión.
+ */
 public class Reto_1 extends Application {
 
-    // Dirección de MongoDB y nombre de la base de datos
+    /**
+     * JavaFX crea el objeto al llamar a launch().
+     */
+    public Reto_1() {
+    }
+
+    /** Dirección de MongoDB. Si en 5 segundos no responde, se muestra un error. */
     private static final String URI = "mongodb://localhost:27017/?serverSelectionTimeoutMS=5000";
+    /** Nombre de la base de datos (la crea el script database/crear_bd.js). */
     private static final String BASE_DATOS = "Tel--ONDA";
 
+    /**
+     * Se ejecuta al abrir la aplicación.
+     *
+     * @param primaryStage ventana principal
+     * @throws Exception si no se puede cargar la primera pantalla
+     */
     @Override
     public void start(Stage primaryStage) throws Exception {
         // La conexión se abre una sola vez al arrancar y se cierra en stop()
@@ -35,11 +53,19 @@ public class Reto_1 extends Application {
         primaryStage.show();
     }
 
+    /**
+     * Se ejecuta al cerrar la aplicación: cierra la conexión con MongoDB.
+     */
     @Override
     public void stop() {
         MongoConnection.close();
     }
 
+    /**
+     * Punto de entrada.
+     *
+     * @param args argumentos de la línea de comandos (no se usan)
+     */
     public static void main(String[] args) {
         launch(args);
     }

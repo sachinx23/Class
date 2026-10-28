@@ -12,7 +12,7 @@
 <?import javafx.scene.layout.Pane?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane id="AnchorPane" prefHeight="420.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controlador.ClienteController">
+<AnchorPane id="AnchorPane" prefHeight="420.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controlador.ClienteController">
     <children>
         <Pane prefHeight="420.0" prefWidth="600.0">
             <children>
@@ -64,10 +64,10 @@
                                     </ContextMenu>
                                   </contextMenu>
                                   <columns>
-                                    <TableColumn fx:id="colTarifaNombre" prefWidth="110.0" text="nombreTarifa" />
-                                    <TableColumn fx:id="colTarifaPrecio" prefWidth="80.0" text="precio" />
-                                    <TableColumn fx:id="colTarifaDetalles" prefWidth="140.0" text="detalles" />
-                                    <TableColumn fx:id="colTarifaTipo" prefWidth="100.0" text="tipotarifa" />
+                                    <TableColumn fx:id="colTarifaNombre" prefWidth="110.0" text="Tarifa" />
+                                    <TableColumn fx:id="colTarifaPrecio" prefWidth="80.0" text="Precio (€)" />
+                                    <TableColumn fx:id="colTarifaDetalles" prefWidth="140.0" text="Detalles" />
+                                    <TableColumn fx:id="colTarifaTipo" prefWidth="100.0" text="Tipo" />
                                   </columns>
                                 </TableView>
                                 <Button fx:id="btnCambiarTarifa" layoutX="445.0" layoutY="20.0" mnemonicParsing="false" onAction="#btnCambiarTarifa" prefWidth="115.0" text="Cambiar tarifa" />
@@ -88,9 +88,9 @@
                                     </ContextMenu>
                                   </contextMenu>
                                   <columns>
-                                    <TableColumn fx:id="colContratoTelefono" prefWidth="100.0" text="telefono" />
-                                    <TableColumn fx:id="colContratoEstado" prefWidth="100.0" text="estado" />
-                                    <TableColumn fx:id="colContratoFecha" prefWidth="130.0" text="fechaFinalizacion" />
+                                    <TableColumn fx:id="colContratoTelefono" prefWidth="100.0" text="Teléfono" />
+                                    <TableColumn fx:id="colContratoEstado" prefWidth="100.0" text="Estado" />
+                                    <TableColumn fx:id="colContratoFecha" prefWidth="130.0" text="Fin" />
                                     <TableColumn fx:id="colContratoIdTarifa" prefWidth="100.0" text="Tarifa" />
                                   </columns>
                                 </TableView>
@@ -109,8 +109,8 @@
                                 
                                 <TableView fx:id="tablaSoporte" layoutX="10.0" layoutY="85.0" prefHeight="130.0" prefWidth="430.0">
                                   <columns>
-                                    <TableColumn fx:id="colSoporteAsunto" prefWidth="250.0" text="asunto" />
-                                    <TableColumn fx:id="colSoporteFecha" prefWidth="180.0" text="fechaCreacion" />
+                                    <TableColumn fx:id="colSoporteAsunto" prefWidth="250.0" text="Asunto" />
+                                    <TableColumn fx:id="colSoporteFecha" prefWidth="180.0" text="Fecha" />
                                   </columns>
                                 </TableView>
                                 <Button fx:id="btnEnviarTicket" layoutX="450.0" layoutY="85.0" mnemonicParsing="false" onAction="#btnEnviarTicket" prefWidth="110.0" text="Enviar ticket" />
@@ -130,8 +130,8 @@
                                     </ContextMenu>
                                   </contextMenu>
                                   <columns>
-                                    <TableColumn fx:id="colValoracionPuntuacion" editable="false" prefWidth="90.0" text="puntuacion" />
-                                    <TableColumn fx:id="colValoracionTexto" onEditCommit="#editarTextoValoracion" prefWidth="340.0" text="texto (doble clic para editar)" />
+                                    <TableColumn fx:id="colValoracionPuntuacion" editable="false" prefWidth="90.0" text="Puntuación" />
+                                    <TableColumn fx:id="colValoracionTexto" onEditCommit="#editarTextoValoracion" prefWidth="340.0" text="Opinión (doble clic para editar)" />
                                   </columns>
                                 </TableView>
                                 <Label layoutX="0.0" layoutY="170.0" text="Puntuación:" />

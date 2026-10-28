@@ -12,7 +12,7 @@
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane prefHeight="617.0" prefWidth="798.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controlador.GestionSucursalController">
+<AnchorPane prefHeight="617.0" prefWidth="798.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controlador.GestionSucursalController">
     <children>
         <Label layoutX="40.0" layoutY="20.0" text="Gestión de sucursales">
             <font><Font name="System Bold" size="16.0" /></font>
@@ -27,11 +27,11 @@
             </ContextMenu>
           </contextMenu>
           <columns>
-            <TableColumn fx:id="colNombre" prefWidth="150.0" text="nombre" />
-            <TableColumn fx:id="colDireccion" prefWidth="200.0" text="direccion" />
-            <TableColumn fx:id="colLocalidad" prefWidth="120.0" text="localidad" />
-            <TableColumn fx:id="colTelefono" prefWidth="110.0" text="telefono" />
-            <TableColumn fx:id="colHorario" prefWidth="138.0" text="horario" />
+            <TableColumn fx:id="colNombre" prefWidth="150.0" text="Nombre" />
+            <TableColumn fx:id="colDireccion" prefWidth="200.0" text="Dirección" />
+            <TableColumn fx:id="colLocalidad" prefWidth="120.0" text="Localidad" />
+            <TableColumn fx:id="colTelefono" prefWidth="110.0" text="Teléfono" />
+            <TableColumn fx:id="colHorario" prefWidth="138.0" text="Horario" />
           </columns>
         </TableView>
         <Label layoutX="40.0" layoutY="330.0" text="Nombre:" />

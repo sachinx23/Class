@@ -13,8 +13,19 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.MouseEvent;
 import modelo.Sucursal;
 
+/**
+ * Gestión de sucursales (GestionSucursal.fxml): crear, modificar y eliminar tiendas.
+ * Casos de uso "Crear sucursal" y "Gestionar sucursal".
+ */
 public class GestionSucursalController {
 
+    /**
+     * Constructor vacío. JavaFX crea el controlador al cargar el FXML.
+     */
+    public GestionSucursalController() {
+    }
+
+    /** Acceso a la base de datos. */
     private final DAO dao = Sesion.getDao();
 
     @FXML private TableView<Sucursal> tablaSucursales;
@@ -31,6 +42,9 @@ public class GestionSucursalController {
     @FXML private TextField txtCodigoPostal;
     @FXML private TextField txtHorario;
 
+    /**
+     * Se ejecuta al abrir la pantalla: prepara las columnas y carga las sucursales.
+     */
     @FXML
     public void initialize() {
         colNombre.setCellValueFactory(new PropertyValueFactory<Sucursal, String>("nombre"));
@@ -41,6 +55,9 @@ public class GestionSucursalController {
         cargarSucursales();
     }
 
+    /**
+     * Carga las sucursales en la tabla.
+     */
     private void cargarSucursales() {
         try {
             tablaSucursales.setItems(FXCollections.observableArrayList(dao.obtenerSucursales()));
@@ -49,6 +66,11 @@ public class GestionSucursalController {
         }
     }
 
+    /**
+     * Clic en la tabla: copia los datos de la sucursal seleccionada al formulario.
+     *
+     * @param event evento de la pantalla
+     */
     @FXML
     public void seleccionarSucursal(MouseEvent event) {
         Sucursal s = tablaSucursales.getSelectionModel().getSelectedItem();
@@ -66,18 +88,27 @@ public class GestionSucursalController {
         }
     }
 
-    // Devuelve el mensaje de error, o null si el formulario es correcto
+    /**
+     * Comprueba el formulario.
+     *
+     * @return el mensaje de error, o null si el formulario es correcto
+     */
     private String validar() {
         if (txtNombre.getText().trim().isEmpty() || txtDireccion.getText().trim().isEmpty()
                 || txtTelefono.getText().trim().isEmpty()) {
             return "Nombre, dirección y teléfono son obligatorios.";
         }
-        if (!txtCodigoPostal.getText().trim().isEmpty() && !txtCodigoPostal.getText().trim().matches("[0-9]{5}")) {
+        if (!txtCodigoPostal.getText().trim().isEmpty() && !Validaciones.codigoPostalValido(txtCodigoPostal.getText().trim())) {
             return "El código postal debe tener 5 números.";
         }
         return null;
     }
 
+    /**
+     * Copia los datos del formulario a la sucursal.
+     *
+     * @param s sucursal donde se copian los datos
+     */
     private void leerFormulario(Sucursal s) {
         s.setNombre(txtNombre.getText().trim());
         s.setTelefono(txtTelefono.getText().trim());
@@ -92,6 +123,11 @@ public class GestionSucursalController {
         s.setHorario(txtHorario.getText().trim());
     }
 
+    /**
+     * Botón "Crear": guarda una sucursal nueva con los datos del formulario.
+     *
+     * @param event evento de la pantalla
+     */
     @FXML
     public void btnCrear(ActionEvent event) {
         String error = validar();
@@ -113,6 +149,11 @@ public class GestionSucursalController {
         }
     }
 
+    /**
+     * Botón "Modificar": guarda los cambios de la sucursal seleccionada.
+     *
+     * @param event evento de la pantalla
+     */
     @FXML
     public void btnModificar(ActionEvent event) {
         Sucursal s = tablaSucursales.getSelectionModel().getSelectedItem();
@@ -138,6 +179,11 @@ public class GestionSucursalController {
         }
     }
 
+    /**
+     * Botón "Eliminar": borra la sucursal seleccionada (solo si no tiene empleados).
+     *
+     * @param event evento de la pantalla
+     */
     @FXML
     public void btnEliminar(ActionEvent event) {
         Sucursal s = tablaSucursales.getSelectionModel().getSelectedItem();
@@ -157,6 +203,11 @@ public class GestionSucursalController {
         }
     }
 
+    /**
+     * Botón "Limpiar": vacía el formulario y quita la selección de la tabla.
+     *
+     * @param event evento de la pantalla
+     */
     @FXML
     public void btnLimpiar(ActionEvent event) {
         txtNombre.clear();

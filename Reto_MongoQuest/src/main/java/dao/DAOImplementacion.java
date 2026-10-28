@@ -20,26 +20,49 @@ import org.bson.Document;
 import org.bson.types.ObjectId;
 
 /**
- * Acceso a MongoDB.
- * Un Document es como un HashMap: se le meten campos con put() y se leen con get().
- * Se usa para guardar datos, para buscar (filtro) y para modificar (cambios).
+ * Implementación del {@link DAO} con MongoDB.
+ * <p>
+ * Cómo se trabaja con MongoDB en esta clase:
+ * <ul>
+ *   <li>Un {@link Document} es como un HashMap: se le meten campos con put() y se leen con get().</li>
+ *   <li>Se usa un Document para guardar datos, para buscar (el "filtro") y para modificar (los "cambios").</li>
+ *   <li>Cada método escribe en el log lo que ha hecho, y si falla MongoDB lanza una
+ *       {@link OurException} con un mensaje para el usuario.</li>
+ * </ul>
+ * Ver la documentación de cada método en la interfaz {@link DAO}.
  */
 public class DAOImplementacion implements DAO {
 
+    /**
+     * Constructor vacío. Se crea uno solo, en la clase Sesion.
+     */
+    public DAOImplementacion() {
+    }
+
+    /** Nombre de la colección de administradores. */
     private static final String COL_ADMINISTRADORES = "Administradores";
+    /** Nombre de la colección de empleados. */
     private static final String COL_EMPLEADOS = "Empleados";
+    /** Nombre de la colección de clientes. */
     private static final String COL_CLIENTES = "Clientes";
+    /** Nombre de la colección de tarifas. */
     private static final String COL_TARIFAS = "Tarifas";
+    /** Nombre de la colección de contratos. */
     private static final String COL_CONTRATOS = "Contratos";
+    /** Nombre de la colección de tickets de soporte. */
     private static final String COL_TICKETS = "TicketsSoportes";
+    /** Nombre de la colección de sucursales. */
     private static final String COL_SUCURSALES = "Sucursales";
+    /** Nombre de la colección de valoraciones. */
     private static final String COL_VALORACIONES = "Valoraciones";
 
-    public static final String ESTADO_PENDIENTE = "pendiente";
-    public static final String ESTADO_ACTIVO = "activo";
-    public static final String ESTADO_BAJA_PENDIENTE = "baja pendiente";
-    public static final String ESTADO_CANCELADO = "cancelado";
-
+    /**
+     * Devuelve una colección de la base de datos.
+     *
+     * @param nombre nombre de la colección (una de las constantes COL_...)
+     * @return la colección
+     * @throws OurException si no hay conexión con MongoDB
+     */
     private MongoCollection<Document> coleccion(String nombre) throws OurException {
         return MongoConnection.getDatabase().getCollection(nombre);
     }
@@ -80,8 +103,14 @@ public class DAOImplementacion implements DAO {
         }
     }
 
-    // Mira si otra persona (cliente, empleado o administrador) ya usa ese nombre de usuario.
-    // idPropio es el id de quien modifica sus datos, para no contarse a sí mismo (null al dar de alta).
+    /**
+     * Mira si otra persona (cliente, empleado o administrador) ya usa ese nombre de usuario.
+     *
+     * @param nombreUsuario nombre de usuario a buscar
+     * @param idPropio      id de quien modifica sus datos, para no contarse a sí mismo (null al dar de alta)
+     * @return true si ya lo usa otra persona
+     * @throws OurException si no hay conexión con MongoDB
+     */
     private boolean nombreUsuarioOcupado(String nombreUsuario, String idPropio) throws OurException {
         String[] colecciones = {COL_ADMINISTRADORES, COL_EMPLEADOS, COL_CLIENTES};
         for (String nombreColeccion : colecciones) {
@@ -93,10 +122,23 @@ public class DAOImplementacion implements DAO {
         return false;
     }
 
+    /**
+     * Mira si otro cliente ya tiene ese DNI.
+     *
+     * @param dni      DNI a buscar
+     * @param idPropio id del cliente que modifica sus datos, para no contarse a sí mismo (null al dar de alta)
+     * @return true si ya lo tiene otro cliente
+     * @throws OurException si no hay conexión con MongoDB
+     */
+    private boolean dniOcupado(String dni, String idPropio) throws OurException {
+        Document d = coleccion(COL_CLIENTES).find(new Document("DNI", dni)).first();
+        return d != null && !idTexto(d, "_id").equals(idPropio);
+    }
+
     @Override
     public void insertarCliente(Cliente cliente) throws OurException {
         try {
-            if (coleccion(COL_CLIENTES).find(new Document("DNI", cliente.getDni())).first() != null) {
+            if (dniOcupado(cliente.getDni(), null)) {
                 LogApp.info("Registro rechazado, DNI repetido: " + cliente.getDni());
                 throw new OurException(ErrorMessages.DNI_EXISTS);
             }
@@ -133,6 +175,9 @@ public class DAOImplementacion implements DAO {
             if (nombreUsuarioOcupado(cliente.getNombreUsuario(), cliente.getId())) {
                 throw new OurException(ErrorMessages.USER_EXISTS);
             }
+            if (dniOcupado(cliente.getDni(), cliente.getId())) {
+                throw new OurException(ErrorMessages.DNI_EXISTS);
+            }
             Document cambios = new Document();
             cambios.put("nombre", cliente.getNombre());
             cambios.put("nombreUsuario", cliente.getNombreUsuario());
@@ -158,13 +203,12 @@ public class DAOImplementacion implements DAO {
     public List<Tarifa> obtenerTarifas() throws OurException {
         List<Tarifa> tarifas = new ArrayList<>();
         try {
-            for (Document d : coleccion(COL_TARIFAS).find()) {
-                // Solo se enseñan las tarifas activas (si no tiene el campo "activa", se considera activa)
-                boolean activa = d.getBoolean("activa", true);
-                if (activa) {
-                    tarifas.add(new Tarifa(idTexto(d, "_id"), texto(d, "nombreTarifa"), numero(d, "precio"),
-                            texto(d, "detalles"), texto(d, "tipotarifa"), true));
-                }
+            // Solo las tarifas activas. "$ne" significa "distinto de": así también salen
+            // las tarifas que no tienen el campo "activa"
+            Document filtro = new Document("activa", new Document("$ne", false));
+            for (Document d : coleccion(COL_TARIFAS).find(filtro)) {
+                tarifas.add(new Tarifa(idTexto(d, "_id"), texto(d, "nombreTarifa"), numero(d, "precio"),
+                        texto(d, "detalles"), texto(d, "tipotarifa"), true));
             }
             LogApp.info("Consultadas " + tarifas.size() + " tarifas");
             return tarifas;
@@ -200,6 +244,14 @@ public class DAOImplementacion implements DAO {
         }
     }
 
+    /**
+     * Busca contratos y los convierte en objetos {@link Contrato}.
+     * Rellena también el nombre de la tarifa (embebida en el contrato) y el nombre y DNI del cliente.
+     *
+     * @param filtro condiciones de búsqueda
+     * @return lista de contratos encontrados
+     * @throws OurException si no hay conexión con MongoDB
+     */
     private List<Contrato> buscarContratos(Document filtro) throws OurException {
         List<Contrato> contratos = new ArrayList<>();
         for (Document d : coleccion(COL_CONTRATOS).find(filtro)) {
@@ -281,6 +333,15 @@ public class DAOImplementacion implements DAO {
         LogApp.info("Contrato " + idContrato + " validado por el empleado " + idEmpleado);
     }
 
+    /**
+     * Cambia el estado de un contrato y, si se indica, guarda qué empleado lo ha hecho.
+     *
+     * @param idContrato   id del contrato
+     * @param estado       estado nuevo
+     * @param idEmpleado   id del empleado, o null si lo hace el cliente
+     * @param mensajeError mensaje para el usuario si algo falla
+     * @throws OurException si el contrato no existe o falla MongoDB
+     */
     private void cambiarEstadoContrato(String idContrato, String estado, String idEmpleado, String mensajeError) throws OurException {
         try {
             Document cambios = new Document();
@@ -334,14 +395,13 @@ public class DAOImplementacion implements DAO {
             long cancelados = coleccion(COL_CONTRATOS).updateMany(filtro, new Document("$set", cambios)).getModifiedCount();
             LogApp.info("Baja aprobada por el empleado " + idEmpleado + ": " + cancelados + " contratos cancelados del cliente " + idCliente);
 
-            // 2. Si ya no le queda ningún contrato sin cancelar, el cliente queda dado de baja (se mantiene su perfil)
-            boolean tieneContratos = false;
-            for (Contrato c : buscarContratos(new Document("idCliente", new ObjectId(idCliente)))) {
-                if (!c.getEstado().equals(ESTADO_CANCELADO)) {
-                    tieneContratos = true;
-                }
-            }
-            if (!tieneContratos) {
+            // 2. Si ya no le queda ningún contrato sin cancelar, el cliente queda dado de baja (se mantiene su perfil).
+            //    countDocuments cuenta en MongoDB sin traer los documentos a Java
+            Document filtroVivos = new Document();
+            filtroVivos.put("idCliente", new ObjectId(idCliente));
+            filtroVivos.put("estado", new Document("$ne", ESTADO_CANCELADO));
+            long contratosVivos = coleccion(COL_CONTRATOS).countDocuments(filtroVivos);
+            if (contratosVivos == 0) {
                 modificar(COL_CLIENTES, idCliente, new Document("dadoDeBaja", true));
                 LogApp.info("Cliente " + idCliente + " dado de baja");
             }
@@ -368,7 +428,9 @@ public class DAOImplementacion implements DAO {
     @Override
     public List<TicketSoporte> obtenerTicketsPendientes() throws OurException {
         try {
-            List<TicketSoporte> tickets = buscarTickets(new Document("estado", "pendiente"));
+            // "$in" = el estado es uno de los de la lista
+            List<String> estados = List.of(TICKET_PENDIENTE, TICKET_EN_PROCESO);
+            List<TicketSoporte> tickets = buscarTickets(new Document("estado", new Document("$in", estados)));
             LogApp.info("Consultados " + tickets.size() + " tickets pendientes");
             return tickets;
         } catch (MongoException e) {
@@ -377,6 +439,13 @@ public class DAOImplementacion implements DAO {
         }
     }
 
+    /**
+     * Busca tickets y los convierte en objetos {@link TicketSoporte}. Rellena también el nombre del cliente.
+     *
+     * @param filtro condiciones de búsqueda
+     * @return lista de tickets encontrados
+     * @throws OurException si no hay conexión con MongoDB
+     */
     private List<TicketSoporte> buscarTickets(Document filtro) throws OurException {
         List<TicketSoporte> tickets = new ArrayList<>();
         for (Document d : coleccion(COL_TICKETS).find(filtro)) {
@@ -398,7 +467,7 @@ public class DAOImplementacion implements DAO {
             d.put("asunto", ticket.getAsunto());
             d.put("descripcion", ticket.getDescripcion());
             d.put("fechaCreacion", ticket.getFechaCreacion());
-            d.put("estado", ticket.getEstado());
+            d.put("estado", TICKET_PENDIENTE);
             d.put("idCliente", new ObjectId(ticket.getIdCliente()));
             d.put("idEmpleado", null);
             coleccion(COL_TICKETS).insertOne(d);
@@ -417,18 +486,18 @@ public class DAOImplementacion implements DAO {
     }
 
     @Override
-    public void resolverTicket(String idTicket, String idEmpleado) throws OurException {
+    public void cambiarEstadoTicket(String idTicket, String estado, String idEmpleado) throws OurException {
         try {
             Document cambios = new Document();
-            cambios.put("estado", "resuelto");
+            cambios.put("estado", estado);
             cambios.put("idEmpleado", new ObjectId(idEmpleado));
             if (!modificar(COL_TICKETS, idTicket, cambios)) {
-                throw new OurException(ErrorMessages.RESOLVER_TICKET);
+                throw new OurException(ErrorMessages.ESTADO_TICKET);
             }
-            LogApp.info("Ticket " + idTicket + " resuelto por el empleado " + idEmpleado);
+            LogApp.info("Ticket " + idTicket + " cambiado a \"" + estado + "\" por el empleado " + idEmpleado);
         } catch (MongoException e) {
-            LogApp.error("Error resolviendo el ticket " + idTicket, e);
-            throw new OurException(ErrorMessages.RESOLVER_TICKET);
+            LogApp.error("Error cambiando el ticket " + idTicket + " a " + estado, e);
+            throw new OurException(ErrorMessages.ESTADO_TICKET);
         }
     }
 
@@ -677,6 +746,12 @@ public class DAOImplementacion implements DAO {
 
     // ---------- DE DOCUMENT A OBJETO Y AL REVÉS ----------
 
+    /**
+     * Convierte un documento de la colección Clientes en un objeto {@link Cliente}.
+     *
+     * @param d documento de MongoDB
+     * @return el cliente
+     */
     private Cliente documentoACliente(Document d) {
         Cliente c = new Cliente(idTexto(d, "_id"), texto(d, "nombre"), texto(d, "nombreUsuario"), texto(d, "contrasena"),
                 texto(d, "correo"), texto(d, "cuentaBancaria"), texto(d, "DNI"), texto(d, "telefono"), texto(d, "direccion"));
@@ -684,11 +759,24 @@ public class DAOImplementacion implements DAO {
         return c;
     }
 
+    /**
+     * Convierte un documento de la colección Empleados en un objeto {@link Empleado}.
+     *
+     * @param d documento de MongoDB
+     * @return el empleado
+     */
     private Empleado documentoAEmpleado(Document d) {
         return new Empleado(idTexto(d, "_id"), texto(d, "nombre"), texto(d, "nombreUsuario"), texto(d, "contrasena"),
                 texto(d, "correo"), texto(d, "cuentaBancaria"), idTexto(d, "idSucursal"));
     }
 
+    /**
+     * Crea el documento con los datos comunes de un empleado o administrador.
+     *
+     * @param empleado empleado o administrador
+     * @param rol      "Empleado" o "Admin"
+     * @return documento listo para guardar
+     */
     private Document documentoEmpleado(Empleado empleado, String rol) {
         Document d = new Document();
         d.put("nombre", empleado.getNombre());
@@ -700,6 +788,12 @@ public class DAOImplementacion implements DAO {
         return d;
     }
 
+    /**
+     * Crea el documento embebido "Ubicacion" de una sucursal.
+     *
+     * @param sucursal sucursal
+     * @return documento con Direccion, Localidad y CodigoPostal
+     */
     private Document documentoUbicacion(Sucursal sucursal) {
         Document ubicacion = new Document();
         ubicacion.put("Direccion", sucursal.getDireccion());
@@ -710,7 +804,15 @@ public class DAOImplementacion implements DAO {
 
     // ---------- AYUDANTES ----------
 
-    // Modifica los campos de "cambios" en el documento con ese id. Devuelve false si no existe
+    /**
+     * Modifica los campos de "cambios" en el documento con ese id.
+     *
+     * @param nombreColeccion colección donde está el documento
+     * @param id              id del documento
+     * @param cambios         campos a cambiar
+     * @return false si no existe ningún documento con ese id
+     * @throws OurException si no hay conexión con MongoDB
+     */
     private boolean modificar(String nombreColeccion, String id, Document cambios) throws OurException {
         Document filtro = new Document("_id", new ObjectId(id));
         // "$set" le dice a MongoDB que solo cambie esos campos y deje el resto como está
@@ -718,14 +820,26 @@ public class DAOImplementacion implements DAO {
         return encontrados > 0;
     }
 
-    // Borra el documento con ese id. Devuelve false si no existe
+    /**
+     * Borra el documento con ese id.
+     *
+     * @param nombreColeccion colección donde está el documento
+     * @param id              id del documento
+     * @return false si no existe ningún documento con ese id
+     * @throws OurException si no hay conexión con MongoDB
+     */
     private boolean borrar(String nombreColeccion, String id) throws OurException {
         Document filtro = new Document("_id", new ObjectId(id));
         long borrados = coleccion(nombreColeccion).deleteOne(filtro).getDeletedCount();
         return borrados > 0;
     }
 
-    // Convierte un id de texto a ObjectId (null si no hay id)
+    /**
+     * Convierte un id de texto en ObjectId.
+     *
+     * @param id id en texto (24 caracteres) o null
+     * @return el ObjectId, o null si no hay id
+     */
     private ObjectId aObjectId(String id) {
         if (id == null) {
             return null;
@@ -733,7 +847,13 @@ public class DAOImplementacion implements DAO {
         return new ObjectId(id);
     }
 
-    // Devuelve el campo como texto, o "" si no existe
+    /**
+     * Lee un campo como texto.
+     *
+     * @param d     documento
+     * @param campo nombre del campo
+     * @return el valor como texto, o "" si no existe
+     */
     private String texto(Document d, String campo) {
         Object valor = d.get(campo);
         if (valor == null) {
@@ -742,7 +862,13 @@ public class DAOImplementacion implements DAO {
         return valor.toString();
     }
 
-    // Devuelve un id (ObjectId) como texto, o null si no existe
+    /**
+     * Lee un campo que guarda un id (ObjectId) y lo devuelve como texto.
+     *
+     * @param d     documento
+     * @param campo nombre del campo
+     * @return el id como texto, o null si no existe
+     */
     private String idTexto(Document d, String campo) {
         Object valor = d.get(campo);
         if (valor == null) {
@@ -751,7 +877,13 @@ public class DAOImplementacion implements DAO {
         return valor.toString();
     }
 
-    // Devuelve un número (puede estar guardado como int o como double), o 0 si no existe
+    /**
+     * Lee un campo numérico (puede estar guardado como int o como double).
+     *
+     * @param d     documento
+     * @param campo nombre del campo
+     * @return el número, o 0 si no existe
+     */
     private double numero(Document d, String campo) {
         Object valor = d.get(campo);
         if (valor == null) {

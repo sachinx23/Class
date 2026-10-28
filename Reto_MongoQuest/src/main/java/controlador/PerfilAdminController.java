@@ -9,8 +9,18 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import modelo.Administrador;
 
+/**
+ * Perfil del administrador (PerfilAdmin.fxml): ver y modificar sus datos.
+ */
 public class PerfilAdminController {
 
+    /**
+     * Constructor vacío. JavaFX crea el controlador al cargar el FXML.
+     */
+    public PerfilAdminController() {
+    }
+
+    /** Acceso a la base de datos. */
     private final DAO dao = Sesion.getDao();
 
     @FXML private TextField txtNombre;
@@ -19,11 +29,12 @@ public class PerfilAdminController {
     @FXML private TextField txtCorreo;
     @FXML private TextField txtCuentaBancaria;
 
-    private Administrador admin;
-
+    /**
+     * Se ejecuta al abrir la pantalla: rellena el formulario con los datos del administrador.
+     */
     @FXML
     public void initialize() {
-        admin = (Administrador) Sesion.getUsuario();
+        Administrador admin = (Administrador) Sesion.getUsuario();
         txtNombre.setText(admin.getNombre());
         txtNombreUsuario.setText(admin.getNombreUsuario());
         txtContrasena.setText(admin.getContrasena());
@@ -31,9 +42,14 @@ public class PerfilAdminController {
         txtCuentaBancaria.setText(admin.getCuentaBancaria());
     }
 
+    /**
+     * Botón "Modificar": valida y guarda los datos nuevos.
+     *
+     * @param event pulsación del botón
+     */
     @FXML
     public void btnModificar(ActionEvent event) {
-        String error = ValidarPerfil.comprobar(txtNombre.getText(), txtNombreUsuario.getText(),
+        String error = Validaciones.comprobarPerfil(txtNombre.getText(), txtNombreUsuario.getText(),
                 txtContrasena.getText(), txtCorreo.getText());
         if (error != null) {
             ShowAlert.info("Datos inválidos", error);
@@ -42,13 +58,13 @@ public class PerfilAdminController {
         if (!ShowAlert.confirmar("Confirmar cambios", "¿Seguro que deseas guardar los cambios?")) {
             return;
         }
-        admin.setNombre(txtNombre.getText().trim());
-        admin.setNombreUsuario(txtNombreUsuario.getText().trim());
-        admin.setContrasena(txtContrasena.getText().trim());
-        admin.setCorreo(txtCorreo.getText().trim());
-        admin.setCuentaBancaria(txtCuentaBancaria.getText().trim());
+        // Se crea un objeto nuevo con los cambios. Solo si se guarda bien pasa a ser el usuario de la sesión
+        Administrador nuevo = new Administrador(Sesion.getUsuario().getId(), txtNombre.getText().trim(),
+                txtNombreUsuario.getText().trim(), txtContrasena.getText().trim(), txtCorreo.getText().trim(),
+                txtCuentaBancaria.getText().trim());
         try {
-            dao.actualizarEmpleado(admin);
+            dao.actualizarEmpleado(nuevo);
+            Sesion.setUsuario(nuevo);
             ShowAlert.info("Modificación exitosa", "Tus datos se han actualizado correctamente.");
         } catch (OurException e) {
             ShowAlert.error(e.getMessage());

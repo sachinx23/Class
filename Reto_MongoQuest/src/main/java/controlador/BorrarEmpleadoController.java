@@ -11,8 +11,18 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
 import modelo.Empleado;
 
+/**
+ * Borrar empleados (BorrarEmpleado.fxml). Caso de uso "Borrar cuenta (Empleado)".
+ */
 public class BorrarEmpleadoController {
 
+    /**
+     * Constructor vacío. JavaFX crea el controlador al cargar el FXML.
+     */
+    public BorrarEmpleadoController() {
+    }
+
+    /** Acceso a la base de datos. */
     private final DAO dao = Sesion.getDao();
 
     @FXML private TableView<Empleado> tablaEmpleados;
@@ -20,6 +30,9 @@ public class BorrarEmpleadoController {
     @FXML private TableColumn<Empleado, String> colNombreUsuario;
     @FXML private TableColumn<Empleado, String> colCorreo;
 
+    /**
+     * Se ejecuta al abrir la pantalla: prepara las columnas y carga los empleados.
+     */
     @FXML
     public void initialize() {
         colNombre.setCellValueFactory(new PropertyValueFactory<Empleado, String>("nombre"));
@@ -28,6 +41,9 @@ public class BorrarEmpleadoController {
         cargarEmpleados();
     }
 
+    /**
+     * Carga los empleados en la tabla.
+     */
     private void cargarEmpleados() {
         try {
             tablaEmpleados.setItems(FXCollections.observableArrayList(dao.obtenerEmpleados()));
@@ -36,6 +52,11 @@ public class BorrarEmpleadoController {
         }
     }
 
+    /**
+     * Botón "Borrar": elimina al empleado seleccionado después de pedir confirmación.
+     *
+     * @param event pulsación del botón
+     */
     @FXML
     public void btnBorrar(ActionEvent event) {
         Empleado empleado = tablaEmpleados.getSelectionModel().getSelectedItem();

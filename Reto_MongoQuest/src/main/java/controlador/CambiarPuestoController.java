@@ -11,14 +11,27 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
 import modelo.Empleado;
 
+/**
+ * Ascender empleados a administrador (CambiarPuesto.fxml). Caso de uso "Ascender".
+ */
 public class CambiarPuestoController {
 
+    /**
+     * Constructor vacío. JavaFX crea el controlador al cargar el FXML.
+     */
+    public CambiarPuestoController() {
+    }
+
+    /** Acceso a la base de datos. */
     private final DAO dao = Sesion.getDao();
 
     @FXML private TableView<Empleado> tablaEmpleados;
     @FXML private TableColumn<Empleado, String> colNombre;
     @FXML private TableColumn<Empleado, String> colCorreo;
 
+    /**
+     * Se ejecuta al abrir la pantalla: prepara las columnas y carga los empleados.
+     */
     @FXML
     public void initialize() {
         colNombre.setCellValueFactory(new PropertyValueFactory<Empleado, String>("nombre"));
@@ -26,6 +39,9 @@ public class CambiarPuestoController {
         cargarEmpleados();
     }
 
+    /**
+     * Carga los empleados en la tabla.
+     */
     private void cargarEmpleados() {
         try {
             tablaEmpleados.setItems(FXCollections.observableArrayList(dao.obtenerEmpleados()));
@@ -34,6 +50,11 @@ public class CambiarPuestoController {
         }
     }
 
+    /**
+     * Botón "Ascender": convierte al empleado seleccionado en administrador.
+     *
+     * @param event pulsación del botón
+     */
     @FXML
     public void btnAscender(ActionEvent event) {
         Empleado empleado = tablaEmpleados.getSelectionModel().getSelectedItem();
