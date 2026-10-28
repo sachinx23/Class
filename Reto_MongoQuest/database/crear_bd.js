@@ -1,163 +1,153 @@
-// Script para crear la base de datos Tel--ONDA con esquemas de validación.
+// =====================================================================
+//  Script para crear la base de datos "Tel--ONDA"
 //
-// Modelo de datos (8 colecciones):
-//   - Información EMBEBIDA:  Contratos.tarifa  y  Sucursales.Ubicacion
-//   - ARRAY DE _id:          Clientes.ticketSoporte  (ids de TicketsSoportes)
-//   - Referencias (_id):     Contratos -> Clientes/Tarifas/Empleados, Empleados -> Sucursales,
-//                            TicketsSoportes -> Clientes/Empleados, Valoraciones -> Clientes/Tarifas
-// Ejecutar con:  mongosh "mongodb://localhost:27017" database/crear_bd.js
-// (o copiar y pegar en la consola mongosh de Compass)
+//  Cómo ejecutarlo (elige una):
+//   - En MongoDB Compass: abre la consola ">_MONGOSH" de abajo, pega todo y pulsa Enter.
+//   - En una terminal:    mongosh "mongodb://localhost:27017" database/crear_bd.js
+//
+//  OJO: borra la base de datos y la crea de cero (se pierden los datos que hubiera).
+// =====================================================================
+//
+//  Qué es un "esquema de validación":
+//  son las reglas que MongoDB comprueba antes de guardar un documento.
+//  Si un documento no las cumple, MongoDB no lo guarda y da un error.
+//
+//    required:  campos que el documento TIENE que tener
+//    bsonType:  tipo de cada campo ("string" = texto, "int" = número entero,
+//               "double" = número con decimales, "bool" = true/false,
+//               "objectId" = un _id, "object" = documento embebido, "array" = lista)
+//    enum:      lista de valores permitidos
+//
+//  Lo que pide el reto y dónde está:
+//    - 8 colecciones relacionadas entre sí (por sus _id)
+//    - Información EMBEBIDA:  Contratos.tarifa  y  Sucursales.Ubicacion
+//    - ARRAY de _id:          Clientes.ticketSoporte
+//    - Todas las colecciones con esquema de validación
+// =====================================================================
 
 db = db.getSiblingDB("Tel--ONDA");
-
-// OJO: borra la base de datos entera para crearla de cero (también los datos que tenga)
 db.dropDatabase();
 
-// ---------------------------------------------------------------- Clientes
+
+// ---------- CLIENTES ----------
+// "ticketSoporte" es un ARRAY con los _id de los tickets del cliente
 db.createCollection("Clientes", {
-  validator: {
-    $jsonSchema: {
-      bsonType: "object",
-      // El DNI no es obligatorio aquí porque se borra al "eliminar datos sensibles"
-      // (al registrarse la aplicación sí lo pide)
-      required: ["nombreUsuario", "nombre", "contrasena", "correo"],
-      properties: {
-        nombreUsuario: { bsonType: "string", minLength: 1 },
-        nombre:        { bsonType: "string", minLength: 1 },
-        contrasena:    { bsonType: "string", minLength: 4 },
-        DNI:           { bsonType: "string", pattern: "^[0-9]{8}[A-Z]$" },
-        correo:        { bsonType: "string", pattern: "^.+@.+\\..+$" },
-        telefono:      { bsonType: "string" },
-        direccion:     { bsonType: "string" },
-        cuentaBancaria:{ bsonType: "string" },
-        dadoDeBaja:    { bsonType: "bool" },
-        ticketSoporte: { bsonType: "array", items: { bsonType: "objectId" } }
-      }
+  validator: { $jsonSchema: {
+    required: ["nombreUsuario", "nombre", "contrasena", "correo"],
+    properties: {
+      nombreUsuario: { bsonType: "string" },
+      nombre:        { bsonType: "string" },
+      contrasena:    { bsonType: "string" },
+      correo:        { bsonType: "string" },
+      dadoDeBaja:    { bsonType: "bool" },
+      ticketSoporte: { bsonType: "array" }
     }
-  }
+  }}
 });
-db.Clientes.createIndex({ nombreUsuario: 1 }, { unique: true });
 
-// ---------------------------------------------------------------- Tarifas
+
+// ---------- TARIFAS ----------
 db.createCollection("Tarifas", {
-  validator: {
-    $jsonSchema: {
-      bsonType: "object",
-      required: ["nombreTarifa", "precio", "tipotarifa"],
-      properties: {
-        nombreTarifa: { bsonType: "string" },
-        precio:       { bsonType: ["int", "double"], minimum: 0 },
-        detalles:     { bsonType: "string" },
-        tipotarifa:   { bsonType: "string" },
-        activa:       { bsonType: "bool" }
-      }
+  validator: { $jsonSchema: {
+    required: ["nombreTarifa", "precio", "tipotarifa"],
+    properties: {
+      nombreTarifa: { bsonType: "string" },
+      precio:       { bsonType: ["int", "double"] },
+      tipotarifa:   { bsonType: "string" },
+      activa:       { bsonType: "bool" }
     }
-  }
+  }}
 });
 
-// ---------------------------------------------------------------- Contratos
+
+// ---------- CONTRATOS ----------
+// "tarifa" está EMBEBIDA: se guarda una copia del nombre y el precio de la tarifa
 db.createCollection("Contratos", {
-  validator: {
-    $jsonSchema: {
-      bsonType: "object",
-      required: ["telefono", "estado", "idCliente", "idTarifa", "fechaComienzo", "tarifa"],
-      properties: {
-        tarifa: {
-          bsonType: "object",
-          required: ["nombreTarifa", "precio"],
-          properties: {
-            nombreTarifa: { bsonType: "string" },
-            precio:       { bsonType: ["int", "double"] }
-          }
-        },
-        estado:    { enum: ["pendiente", "activo", "baja pendiente", "cancelado"] },
-        notificado:{ bsonType: "bool" },
-        idCliente: { bsonType: "objectId" },
-        idTarifa:  { bsonType: "objectId" }
-      }
+  validator: { $jsonSchema: {
+    required: ["estado", "idCliente", "idTarifa", "tarifa"],
+    properties: {
+      estado:    { enum: ["pendiente", "activo", "baja pendiente", "cancelado"] },
+      idCliente: { bsonType: "objectId" },
+      idTarifa:  { bsonType: "objectId" },
+      tarifa:    { bsonType: "object" }
     }
-  }
+  }}
 });
 
-// ---------------------------------------------------------------- Empleados y Administradores
-// Tienen los mismos campos; los empleados además pueden tener idSucursal
-const esquemaPersonal = {
-  bsonType: "object",
-  required: ["nombre", "nombreUsuario", "rol", "contrasena", "correo"],
-  properties: {
-    nombre:         { bsonType: "string", minLength: 1 },
-    nombreUsuario:  { bsonType: "string", minLength: 1 },
-    rol:            { enum: ["Empleado", "Admin"] },
-    contrasena:     { bsonType: "string", minLength: 4 },
-    correo:         { bsonType: "string", pattern: "^.+@.+\\..+$" },
-    cuentaBancaria: { bsonType: "string" },
-    idSucursal:     { bsonType: ["objectId", "null"] }
-  }
-};
-db.createCollection("Empleados", { validator: { $jsonSchema: esquemaPersonal } });
-db.createCollection("Administradores", { validator: { $jsonSchema: esquemaPersonal } });
-db.Empleados.createIndex({ nombreUsuario: 1 }, { unique: true });
-db.Administradores.createIndex({ nombreUsuario: 1 }, { unique: true });
 
-// ---------------------------------------------------------------- Tickets de soporte
+// ---------- EMPLEADOS ----------
+db.createCollection("Empleados", {
+  validator: { $jsonSchema: {
+    required: ["nombre", "nombreUsuario", "contrasena", "correo"],
+    properties: {
+      nombre:        { bsonType: "string" },
+      nombreUsuario: { bsonType: "string" },
+      contrasena:    { bsonType: "string" },
+      correo:        { bsonType: "string" }
+    }
+  }}
+});
+
+
+// ---------- ADMINISTRADORES ----------
+db.createCollection("Administradores", {
+  validator: { $jsonSchema: {
+    required: ["nombre", "nombreUsuario", "contrasena", "correo"],
+    properties: {
+      nombre:        { bsonType: "string" },
+      nombreUsuario: { bsonType: "string" },
+      contrasena:    { bsonType: "string" },
+      correo:        { bsonType: "string" }
+    }
+  }}
+});
+
+
+// ---------- TICKETS DE SOPORTE ----------
 db.createCollection("TicketsSoportes", {
-  validator: {
-    $jsonSchema: {
-      bsonType: "object",
-      required: ["asunto", "descripcion", "fechaCreacion", "estado", "idCliente"],
-      properties: {
-        asunto:        { bsonType: "string", minLength: 1 },
-        descripcion:   { bsonType: "string", minLength: 1 },
-        fechaCreacion: { bsonType: "string" },
-        estado:        { enum: ["pendiente", "en proceso", "resuelto", "cerrado"] },
-        idCliente:     { bsonType: "objectId" },
-        idEmpleado:    { bsonType: ["objectId", "null"] }
-      }
+  validator: { $jsonSchema: {
+    required: ["asunto", "descripcion", "estado", "idCliente"],
+    properties: {
+      asunto:      { bsonType: "string" },
+      descripcion: { bsonType: "string" },
+      estado:      { enum: ["pendiente", "en proceso", "resuelto", "cerrado"] },
+      idCliente:   { bsonType: "objectId" }
     }
-  }
+  }}
 });
 
-// ---------------------------------------------------------------- Sucursales
-// "Ubicacion" es un documento embebido con la dirección
+
+// ---------- SUCURSALES ----------
+// "Ubicacion" está EMBEBIDA: dirección, localidad y código postal
 db.createCollection("Sucursales", {
-  validator: {
-    $jsonSchema: {
-      bsonType: "object",
-      required: ["nombre", "telefono", "Ubicacion"],
-      properties: {
-        nombre:   { bsonType: "string", minLength: 1 },
-        horario:  { bsonType: "string" },
-        telefono: { bsonType: "string", minLength: 1 },
-        Ubicacion: {
-          bsonType: "object",
-          required: ["Direccion"],
-          properties: {
-            Direccion:    { bsonType: "string", minLength: 1 },
-            Localidad:    { bsonType: "string" },
-            CodigoPostal: { bsonType: "int" }
-          }
-        }
-      }
+  validator: { $jsonSchema: {
+    required: ["nombre", "telefono", "Ubicacion"],
+    properties: {
+      nombre:    { bsonType: "string" },
+      telefono:  { bsonType: "string" },
+      Ubicacion: { bsonType: "object" }
     }
-  }
+  }}
 });
 
-// ---------------------------------------------------------------- Valoraciones
+
+// ---------- VALORACIONES ----------
 db.createCollection("Valoraciones", {
-  validator: {
-    $jsonSchema: {
-      bsonType: "object",
-      required: ["puntuacion", "texto", "idCliente"],
-      properties: {
-        puntuacion: { bsonType: "int", minimum: 1, maximum: 5 },
-        texto:      { bsonType: "string", minLength: 1 },
-        idCliente:  { bsonType: "objectId" }
-      }
+  validator: { $jsonSchema: {
+    required: ["puntuacion", "texto", "idCliente"],
+    properties: {
+      puntuacion: { bsonType: "int", minimum: 1, maximum: 5 },
+      texto:      { bsonType: "string" },
+      idCliente:  { bsonType: "objectId" }
     }
-  }
+  }}
 });
 
-// ---------------------------------------------------------------- Datos de ejemplo
+
+// =====================================================================
+//  DATOS DE EJEMPLO (contraseña de todos: abcd)
+// =====================================================================
+
 db.Tarifas.insertMany([
   { nombreTarifa: "Onda Fibra+Móvil 600", precio: 40, detalles: "600 MB simétricos + 50 GB móvil", tipotarifa: "Fibra + Móvil", activa: true },
   { nombreTarifa: "Onda Móvil 30",        precio: 15, detalles: "30 GB + llamadas ilimitadas",     tipotarifa: "Móvil",         activa: true },
@@ -169,17 +159,16 @@ db.Administradores.insertOne({
   contrasena: "abcd", correo: "aitorfernandez@gmail.com", cuentaBancaria: "ES7921000813610123456789"
 });
 
+// Se crea el _id de la sucursal antes, para poder ponerlo también en el empleado
 const idSucursal = ObjectId();
-const idPablo = ObjectId();
 
 db.Sucursales.insertOne({
-  _id: idSucursal, nombre: "Tel-ONDA Bilbao", horario: "Lunes a viernes: 09:00-20:00",
-  telefono: "987 687 654",
+  _id: idSucursal, nombre: "Tel-ONDA Bilbao", horario: "Lunes a viernes: 09:00-20:00", telefono: "987 687 654",
   Ubicacion: { Direccion: "Lonbo Kalea", Localidad: "Bilbao", CodigoPostal: 48480 }
 });
 
 db.Empleados.insertOne({
-  _id: idPablo, nombre: "Pablo diaz", nombreUsuario: "Pablodiaz0", rol: "Empleado",
+  nombre: "Pablo diaz", nombreUsuario: "Pablodiaz0", rol: "Empleado",
   contrasena: "abcd", correo: "pablodiaz@gmail.com", cuentaBancaria: "ES7921000813610123456789",
   idSucursal: idSucursal
 });
@@ -190,4 +179,4 @@ db.Clientes.insertOne({
   cuentaBancaria: "ES7921000813610123456789", dadoDeBaja: false, ticketSoporte: []
 });
 
-print("Base de datos " + db.getName() + " creada");
+print("Base de datos Tel--ONDA creada");
